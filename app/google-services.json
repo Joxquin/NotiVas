@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "299865315214",
+    "project_id": "com-notivas-2d746",
+    "storage_bucket": "com-notivas-2d746.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:299865315214:android:f2c091f33b0de69867f6df",
+        "android_client_info": {
+          "package_name": "com.notivas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6aVoyNW_f3_Qt4_bdnKIMr-agxvfpGac"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
