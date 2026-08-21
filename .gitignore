@@ -16,3 +16,10 @@ local.properties
 .idea/vcs.xml
 .kotlin
 .idea
+
+# Firebase / Google Services
+app/google-services.json
+
+# Keystores
+*.jks
+*.keystore
