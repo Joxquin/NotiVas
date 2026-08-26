@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.google.material)
     implementation(libs.firebase.ai)
 
     // Hilt
@@ -60,7 +61,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.hilt.work)
-    ksp(libs.hilt.compiler)
+    ksp(libs.androidx.hilt.compiler)
 
     // Retrofit
     implementation(libs.retrofit)
