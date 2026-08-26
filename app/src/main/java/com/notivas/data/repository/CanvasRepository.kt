@@ -8,9 +8,11 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.notivas.data.local.dao.AssignmentDao
 import com.notivas.data.local.dao.CourseDao
+import com.notivas.data.local.dao.PlannerItemDao
 import com.notivas.data.local.prefs.PreferencesManager
 import com.notivas.data.model.Assignment
 import com.notivas.data.model.Course
+import com.notivas.data.model.PlannerItem
 import com.notivas.data.model.UserProfile
 import com.notivas.data.remote.CanvasApiService
 import com.notivas.worker.ReminderWorker
@@ -27,19 +29,30 @@ class CanvasRepository @Inject constructor(
     private val apiService: CanvasApiService,
     private val courseDao: CourseDao,
     private val assignmentDao: AssignmentDao,
+    private val plannerItemDao: PlannerItemDao,
     private val preferencesManager: PreferencesManager
 ) {
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allAssignments: Flow<List<Assignment>> = assignmentDao.getAllAssignments()
+    val allPlannerItems: Flow<List<PlannerItem>> = plannerItemDao.getAllPlannerItems()
 
     suspend fun fetchAndSaveData() {
         val token = "Bearer ${preferencesManager.accessToken.first()}"
         
         try {
-            val courses = apiService.getCourses(token)
-            courseDao.insertCourses(courses)
-            
+            // Fetch Planner Items (for Tareas and Foros)
             val now = java.time.ZonedDateTime.now()
+            val startDate = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            try {
+                val plannerItems = apiService.getPlannerItems(token, startDate)
+                plannerItemDao.insertPlannerItems(plannerItems)
+            } catch (e: Exception) {
+                Log.e("CanvasRepository", "Error fetching planner items", e)
+            }
+
+            val courses = apiService.getCourses(token)
+            Log.d("CanvasRepository", "Fetched ${courses.size} courses: ${courses.map { it.name }}")
+            courseDao.insertCourses(courses)
             
             courses.forEach { course ->
                 try {
@@ -101,6 +114,10 @@ class CanvasRepository @Inject constructor(
     fun getAssignmentsByCourse(courseId: Long): Flow<List<Assignment>> =
         assignmentDao.getAssignmentsByCourse(courseId)
 
+    suspend fun markNotificationSent(assignmentId: Long) {
+        assignmentDao.updateNotificationSent(assignmentId, true)
+    }
+
     suspend fun getProfile(): UserProfile {
         val token = "Bearer ${preferencesManager.accessToken.first()}"
         return apiService.getProfile(token)
@@ -110,6 +127,7 @@ class CanvasRepository @Inject constructor(
         preferencesManager.clear()
         courseDao.deleteAll()
         assignmentDao.deleteAll()
+        plannerItemDao.deleteAll()
         WorkManager.getInstance(context).cancelAllWorkByTag("assignment_reminder")
     }
 }

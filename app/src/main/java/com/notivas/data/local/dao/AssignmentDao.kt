@@ -18,6 +18,9 @@ interface AssignmentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAssignments(assignments: List<Assignment>)
 
+    @Query("UPDATE assignments SET notificationSent = :sent WHERE id = :id")
+    suspend fun updateNotificationSent(id: Long, sent: Boolean)
+
     @Query("DELETE FROM assignments")
     suspend fun deleteAll()
 }

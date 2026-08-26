@@ -13,5 +13,6 @@ data class Assignment(
     @SerializedName("course_id") val courseId: Long,
     @SerializedName("has_submitted_submissions") val isCompleted: Boolean = false,
     @SerializedName("locked_for_user") val isLocked: Boolean = false,
-    val status: String = "missing" // Manual status: "upcoming", "completed", "missing"
+    val status: String = "missing", // Manual status: "upcoming", "completed", "missing"
+    val notificationSent: Boolean = false
 )
