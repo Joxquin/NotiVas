@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notivas.data.model.Assignment
 import com.notivas.data.model.Course
+import com.notivas.data.model.PlannerItem
 import com.notivas.data.repository.CanvasRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -40,6 +41,17 @@ class DashboardViewModel @Inject constructor(
                 val course = allCourses.find { it.id == assignment.courseId }
                 AssignmentUiModel(assignment, course?.name ?: "Curso desconocido")
             }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val plannerTasks: StateFlow<List<PlannerItem>> = combine(
+        repository.allPlannerItems,
+        _selectedCourseId
+    ) { items, courseId ->
+        items.filter { 
+            (courseId == null || it.courseId == courseId) &&
+            it.plannableType != "discussion_topic" && 
+            !it.plannable.title.startsWith("_MTEO") 
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun selectCourse(courseId: Long?) {

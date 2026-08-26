@@ -13,7 +13,8 @@ interface CanvasApiService {
     @GET("api/v1/courses")
     suspend fun getCourses(
         @Header("Authorization") token: String,
-        @Query("enrollment_state") state: String = "active"
+        @Query("enrollment_state") state: String = "active",
+        @Query("per_page") perPage: Int = 100
     ): List<Course>
 
     @GET("api/v1/users/self/upcoming_assignments")
@@ -36,4 +37,11 @@ interface CanvasApiService {
     suspend fun verifyToken(
         @Header("Authorization") token: String
     ): UserProfile
+
+    @GET("api/v1/planner/items")
+    suspend fun getPlannerItems(
+        @Header("Authorization") token: String,
+        @Query("start_date") startDate: String,
+        @Query("per_page") perPage: Int = 100
+    ): List<com.notivas.data.model.PlannerItem>
 }

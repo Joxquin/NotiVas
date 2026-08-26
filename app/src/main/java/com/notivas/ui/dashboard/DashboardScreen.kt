@@ -22,11 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.notivas.data.model.Assignment
 import com.notivas.data.model.Course
+import com.notivas.data.model.PlannerItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DashboardScreen(
     assignments: List<AssignmentUiModel>,
+    plannerTasks: List<PlannerItem>,
     courses: List<Course>,
     selectedCourseId: Long?,
     isRefreshing: Boolean,
@@ -34,7 +36,7 @@ fun DashboardScreen(
     onRefresh: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Prioritarias", "Completadas", "Faltantes")
+    val tabs = listOf("Pendientes", "Completadas", "Faltantes")
     var courseSearchQuery by remember { mutableStateOf("") }
     val filteredCourses = remember(courses, courseSearchQuery) {
         if (courseSearchQuery.isBlank()) courses
@@ -124,26 +126,91 @@ fun DashboardScreen(
                 }
             }
 
-            val filteredAssignments = when (selectedTab) {
-                0 -> assignments.filter { it.assignment.status == "upcoming" }
-                1 -> assignments.filter { it.assignment.status == "completed" }
-                else -> assignments.filter { it.assignment.status == "missing" }
-            }
-
-            if (filteredAssignments.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No hay tareas en esta sección",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            when (selectedTab) {
+                0 -> {
+                    if (plannerTasks.isEmpty()) {
+                        EmptySection("No hay tareas pendientes en el planner")
+                    } else {
+                        PlannerList(plannerTasks)
+                    }
                 }
-            } else {
-                AssignmentList(filteredAssignments)
+                else -> {
+                    val filteredAssignments = when (selectedTab) {
+                        1 -> assignments.filter { it.assignment.status == "completed" }
+                        else -> assignments.filter { it.assignment.status == "missing" }
+                    }
+
+                    if (filteredAssignments.isEmpty()) {
+                        EmptySection("No hay tareas en esta sección")
+                    } else {
+                        AssignmentList(filteredAssignments)
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun EmptySection(message: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun PlannerList(items: List<PlannerItem>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(items) { item ->
+            PlannerCard(item)
+        }
+    }
+}
+
+@Composable
+fun PlannerCard(item: PlannerItem) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = item.contextName ?: "Sin curso",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = item.plannable.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            val dateText = item.plannableDate?.let {
+                try {
+                    val date = java.time.ZonedDateTime.parse(it).withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
+                    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a")
+                    date.format(formatter)
+                } catch (e: Exception) { it }
+            } ?: "Sin fecha"
+
+            Text(
+                text = "Vence: $dateText",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }

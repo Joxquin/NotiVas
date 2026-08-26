@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.notivas.data.local.CanvasDatabase
 import com.notivas.data.local.dao.AssignmentDao
 import com.notivas.data.local.dao.CourseDao
+import com.notivas.data.local.dao.PlannerItemDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +24,8 @@ object DatabaseModule {
             context,
             CanvasDatabase::class.java,
             "canvas_db"
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
@@ -31,4 +33,7 @@ object DatabaseModule {
 
     @Provides
     fun provideAssignmentDao(db: CanvasDatabase): AssignmentDao = db.assignmentDao()
+
+    @Provides
+    fun providePlannerItemDao(db: CanvasDatabase): PlannerItemDao = db.plannerItemDao()
 }
