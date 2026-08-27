@@ -28,7 +28,9 @@ fun VerificationScreen(
     ) {
         if (isVerifying) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                LoadingIndicator()
+                LoadingIndicator(
+                    modifier = Modifier.size(100.dp)
+                )
             }
         } else {
             Column(
