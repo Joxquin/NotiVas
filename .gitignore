@@ -16,6 +16,7 @@ local.properties
 .idea/vcs.xml
 .kotlin
 .idea
+.vscode
 
 # Firebase / Google Services
 app/google-services.json
