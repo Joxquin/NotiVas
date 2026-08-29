@@ -349,123 +349,69 @@ fun AssignmentList(assignments: List<AssignmentUiModel>, tabIndex: Int) {
 @Composable
 fun AssignmentCard(uiModel: AssignmentUiModel, tabIndex: Int) {
     val assignment = uiModel.assignment
-    val accentColor = when (assignment.status) {
-        "upcoming" -> MaterialTheme.colorScheme.primary
-        "completed" -> Color(0xFF388E3C) // Green
-        else -> MaterialTheme.colorScheme.error
-    }
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        shape = MaterialTheme.shapes.extraLarge
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = uiModel.courseName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = accentColor,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // Status badge
-                if (assignment.status == "completed") {
-                    val gradeText = when {
-                        assignment.score != null -> "${assignment.score} pts"
-                        assignment.grade != null -> assignment.grade
-                        else -> null
-                    }
-                    if (gradeText != null) {
-                        Badge(containerColor = Color(0xFFE8F5E9)) {
-                            Text("Calificada: $gradeText", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        Badge(containerColor = Color(0xFFFFF9C4)) {
-                            Text("Entregada", color = Color(0xFFF57F17), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                } else if (assignment.status == "missing") {
-                    Badge(containerColor = MaterialTheme.colorScheme.errorContainer) {
-                        Text("Vencida", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
-                    }
-                } else if (assignment.dueAt == null) {
-                    Badge(containerColor = Color(0xFFEDE7F6)) {
-                        Text("Sin fecha límite", color = Color(0xFF5E35B1), fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            
+            Text(
+                text = uiModel.courseName,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = assignment.name,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 28.sp
+                fontWeight = FontWeight.ExtraBold
             )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Details (Points, Submitted date, Due date)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val ptsText = assignment.pointsPossible?.let { "$it pts" } ?: "Sin puntaje"
-                Text(
-                    text = "Puntos: $ptsText",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (assignment.submittedAt != null) {
-                    val submittedStr = try {
-                        val dt = java.time.ZonedDateTime.parse(assignment.submittedAt)
-                            .withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
-                        dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"))
-                    } catch (e: Exception) { assignment.submittedAt }
-                    Text(
-                        text = "Entregado: $submittedStr",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF00838F),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                } else if (assignment.gradedAt != null && assignment.status == "completed") {
-                    val gradedStr = try {
-                        val dt = java.time.ZonedDateTime.parse(assignment.gradedAt)
-                            .withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
-                        dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"))
-                    } catch (e: Exception) { assignment.gradedAt }
-                    Text(
-                        text = "Evaluado: $gradedStr",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF00838F),
-                        fontWeight = FontWeight.SemiBold
-                    )
+            val dateText = when (assignment.status) {
+                "completed" -> {
+                    val subAt = assignment.submittedAt ?: assignment.gradedAt
+                    val dateFormatted = subAt?.let {
+                        try {
+                            val date = java.time.ZonedDateTime.parse(it).withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
+                            val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a")
+                            date.format(formatter)
+                        } catch (e: Exception) { it }
+                    } ?: "Entregado"
+                    val scoreInfo = when {
+                        assignment.score != null -> " (${assignment.score} pts)"
+                        assignment.grade != null -> " (${assignment.grade})"
+                        else -> ""
+                    }
+                    "Entregado: $dateFormatted$scoreInfo"
                 }
-
-                val dueText = assignment.dueAt?.let {
-                    try {
-                        val dt = java.time.ZonedDateTime.parse(it)
-                            .withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
-                        dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"))
-                    } catch (e: Exception) { it }
-                } ?: "Sin fecha límite"
-
-                val dueLabel = if (assignment.status == "missing") "Venció:" else "Vence:"
-                Text(
-                    text = "$dueLabel $dueText",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = if (assignment.status == "missing") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                )
+                "missing" -> {
+                    val dueFormatted = assignment.dueAt?.let {
+                        try {
+                            val date = java.time.ZonedDateTime.parse(it).withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
+                            val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a")
+                            date.format(formatter)
+                        } catch (e: Exception) { it }
+                    } ?: "Sin fecha"
+                    "Venció: $dueFormatted"
+                }
+                else -> {
+                    val dueFormatted = assignment.dueAt?.let {
+                        try {
+                            val date = java.time.ZonedDateTime.parse(it).withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
+                            val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a")
+                            date.format(formatter)
+                        } catch (e: Exception) { it }
+                    } ?: "Sin fecha"
+                    "Vence: $dueFormatted"
+                }
             }
+
+            Text(
+                text = dateText,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
