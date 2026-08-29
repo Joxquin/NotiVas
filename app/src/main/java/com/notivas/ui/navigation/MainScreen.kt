@@ -109,6 +109,9 @@ fun MainScreen(onLogout: () -> Unit) {
                 val plannerTasks by dashboardViewModel.plannerTasks.collectAsState()
                 val courses by dashboardViewModel.courses.collectAsState()
                 val selectedCourseId by dashboardViewModel.selectedCourseId.collectAsState()
+                val selectedSemester by dashboardViewModel.selectedSemester.collectAsState()
+                val availableSemesters by dashboardViewModel.availableSemesters.collectAsState()
+                val showUndatedTasks by dashboardViewModel.showUndatedTasks.collectAsState()
                 val isRefreshing by dashboardViewModel.isRefreshing.collectAsState()
 
                 DashboardScreen(
@@ -116,8 +119,13 @@ fun MainScreen(onLogout: () -> Unit) {
                     plannerTasks = plannerTasks,
                     courses = courses,
                     selectedCourseId = selectedCourseId,
+                    selectedSemester = selectedSemester,
+                    availableSemesters = availableSemesters,
+                    showUndatedTasks = showUndatedTasks,
                     isRefreshing = isRefreshing,
                     onCourseSelect = dashboardViewModel::selectCourse,
+                    onSemesterSelect = dashboardViewModel::selectSemester,
+                    onToggleShowUndated = dashboardViewModel::toggleShowUndatedTasks,
                     onRefresh = dashboardViewModel::refresh
                 )
             }
