@@ -8,5 +8,6 @@ import com.google.gson.annotations.SerializedName
 data class Course(
     @PrimaryKey @SerializedName("id") val id: Long,
     @SerializedName("name") val name: String,
-    @SerializedName("course_code") val courseCode: String? = null
+    @SerializedName("course_code") val courseCode: String? = null,
+    @SerializedName("enrollment_term_id") val enrollmentTermId: Long? = null
 )

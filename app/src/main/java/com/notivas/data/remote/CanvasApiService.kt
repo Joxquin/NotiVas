@@ -25,7 +25,23 @@ interface CanvasApiService {
     @GET("api/v1/courses/{courseId}/assignments")
     suspend fun getAssignmentsForCourse(
         @Header("Authorization") token: String,
-        @Path("courseId") courseId: Long
+        @Path("courseId") courseId: Long,
+        @Query("include[]") include: String? = "submission",
+        @Query("order_by") orderBy: String? = "due_at",
+        @Query("per_page") perPage: Int = 100
+    ): List<Assignment>
+
+    @GET("api/v1/courses/{courseId}/assignments/{assignmentId}/submissions/self")
+    suspend fun getSubmissionForAssignment(
+        @Header("Authorization") token: String,
+        @Path("courseId") courseId: Long,
+        @Path("assignmentId") assignmentId: Long
+    ): com.notivas.data.model.SubmissionDetails
+    
+    @GET("api/v1/users/self/missing_submissions")
+    suspend fun getMissingSubmissions(
+        @Header("Authorization") token: String,
+        @Query("per_page") perPage: Int = 100
     ): List<Assignment>
     
     @GET("api/v1/users/self/profile")
