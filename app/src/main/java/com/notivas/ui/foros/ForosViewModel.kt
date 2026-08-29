@@ -21,7 +21,8 @@ class ForosViewModel @Inject constructor(
         .map { items ->
             items.filter { 
                 it.plannableType == "discussion_topic" || 
-                it.plannable.title.startsWith("_MTEO") 
+                it.plannable.title.startsWith("_MTEO") ||
+                it.plannable.title.contains("FORO", ignoreCase = true)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

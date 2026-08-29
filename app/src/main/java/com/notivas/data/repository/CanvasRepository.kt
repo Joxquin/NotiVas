@@ -17,6 +17,10 @@ import com.notivas.data.model.UserProfile
 import com.notivas.data.remote.CanvasApiService
 import com.notivas.worker.ReminderWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
@@ -37,12 +41,13 @@ class CanvasRepository @Inject constructor(
     val allPlannerItems: Flow<List<PlannerItem>> = plannerItemDao.getAllPlannerItems()
 
     suspend fun fetchAndSaveData() {
-        val token = "Bearer ${preferencesManager.accessToken.first()}"
+        val rawToken = preferencesManager.accessToken.first() ?: return
+        val token = "Bearer $rawToken"
         
         try {
-            // Fetch Planner Items (for Tareas and Foros)
+            // 1. Fetch Planner Items (for Foros and Planner)
             val now = java.time.ZonedDateTime.now()
-            val startDate = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            val startDate = now.minusDays(30).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             try {
                 val plannerItems = apiService.getPlannerItems(token, startDate)
                 plannerItemDao.insertPlannerItems(plannerItems)
@@ -50,31 +55,83 @@ class CanvasRepository @Inject constructor(
                 Log.e("CanvasRepository", "Error fetching planner items", e)
             }
 
-            val courses = apiService.getCourses(token)
-            Log.d("CanvasRepository", "Fetched ${courses.size} courses: ${courses.map { it.name }}")
-            courseDao.insertCourses(courses)
-            
-            courses.forEach { course ->
-                try {
-                    val rawAssignments = apiService.getAssignmentsForCourse(token, course.id)
-                    val assignments = rawAssignments.map { assignment ->
-                        val status = when {
-                            assignment.isCompleted -> "completed"
-                            assignment.dueAt == null -> "upcoming"
-                            else -> try {
-                                if (java.time.ZonedDateTime.parse(assignment.dueAt).isBefore(now)) "missing"
-                                else "upcoming"
-                            } catch (e: Exception) { "upcoming" }
+            // 2. Fetch Active Courses
+            val allCoursesList = apiService.getCourses(token)
+            Log.d("CanvasRepository", "Fetched ${allCoursesList.size} active courses")
+            courseDao.insertCourses(allCoursesList)
+
+            // 3. Fetch assignments for ALL active courses in parallel using coroutines
+            val currentAssignmentsList = coroutineScope {
+                allCoursesList.map { course ->
+                    async(Dispatchers.IO) {
+                        try {
+                            val rawAssignments = apiService.getAssignmentsForCourse(
+                                token = token,
+                                courseId = course.id,
+                                include = "submission",
+                                orderBy = "due_at"
+                            )
+                            rawAssignments.mapNotNull { a ->
+                                // Filter out discussions/forums
+                                val isForum = (a.submissionTypes?.size == 1 && a.submissionTypes.contains("discussion_topic"))
+                                        || a.name.startsWith("_MTEO")
+                                        || a.name.contains("FORO", ignoreCase = true)
+                                if (isForum) return@mapNotNull null
+
+                                val sub = a.submission
+                                val isSubmitted = sub != null && (
+                                    !sub.submittedAt.isNullOrBlank() ||
+                                    sub.workflowState in listOf("submitted", "graded")
+                                )
+
+                                val status = if (isSubmitted) "completed" else "upcoming"
+
+                                a.copy(
+                                    status = status,
+                                    submittedAt = sub?.submittedAt,
+                                    gradedAt = sub?.gradedAt,
+                                    score = sub?.score,
+                                    grade = sub?.grade
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.e("CanvasRepository", "Error fetching assignments for course ${course.id}", e)
+                            emptyList()
                         }
-                        assignment.copy(status = status)
                     }
-                    assignmentDao.insertAssignments(assignments)
-                } catch (e: Exception) {
-                    Log.e("CanvasRepository", "Error fetching assignments for course ${course.id}", e)
+                }.awaitAll().flatten()
+            }
+
+            // 4. Fetch Missing Submissions from Canvas API (exact endpoint used in Python show_missing_tasks)
+            val missingMap = try {
+                val rawMissing = apiService.getMissingSubmissions(token)
+                rawMissing.mapNotNull { a ->
+                    val isForum = (a.submissionTypes?.size == 1 && a.submissionTypes.contains("discussion_topic"))
+                            || a.name.startsWith("_MTEO")
+                            || a.name.contains("FORO", ignoreCase = true)
+                    if (isForum) return@mapNotNull null
+                    a.id to a.copy(status = "missing")
+                }.toMap()
+            } catch (e: Exception) {
+                Log.e("CanvasRepository", "Error fetching missing submissions", e)
+                emptyMap()
+            }
+
+            // Combine both: apply missing status if assignment is in missingMap
+            val currentWithMissing = currentAssignmentsList.map { a ->
+                if (missingMap.containsKey(a.id) && a.status != "completed") {
+                    a.copy(status = "missing")
+                } else {
+                    a
                 }
             }
+
+            val remainingMissing = missingMap.values.filter { m -> currentAssignmentsList.none { it.id == m.id } }
+            val combinedAssignments = currentWithMissing + remainingMissing
+
+            assignmentDao.insertAssignments(combinedAssignments)
         } catch (e: Exception) {
-            Log.e("CanvasRepository", "Error fetching courses", e)
+            Log.e("CanvasRepository", "Error syncing Canvas data", e)
             throw e
         }
         
