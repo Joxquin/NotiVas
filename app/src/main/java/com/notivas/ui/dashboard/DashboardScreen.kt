@@ -358,9 +358,6 @@ fun AssignmentCard(uiModel: AssignmentUiModel, tabIndex: Int) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
