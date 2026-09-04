@@ -47,16 +47,13 @@ fun DashboardScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Pendientes", "Completadas", "Faltantes")
-    var courseSearchQuery by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
-
-    val filteredCourses = remember(courses, courseSearchQuery) {
-        if (courseSearchQuery.isBlank()) courses
-        else courses.filter { it.name.contains(courseSearchQuery, ignoreCase = true) }
-    }
 
     val pullToRefreshState = rememberPullToRefreshState()
     val pullDistance = pullToRefreshState.distanceFraction
+
+    val hasActiveFilters = selectedSemester != null || !showUndatedTasks || selectedCourseId != null
 
     // Bottom Sheet for Filters
     if (showFilterBottomSheet) {
@@ -91,7 +88,41 @@ fun DashboardScreen(
 
                 HorizontalDivider(thickness = 0.5.dp)
 
-                // 1. Filtrado por Semestre
+                // 1. Filtrado por Curso
+                Text(
+                    text = "Filtrar por Curso",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedCourseId == null,
+                            onClick = { onCourseSelect(null) },
+                            label = { Text("Todos los cursos") }
+                        )
+                    }
+                    items(courses) { course ->
+                        FilterChip(
+                            selected = selectedCourseId == course.id,
+                            onClick = { onCourseSelect(course.id) },
+                            label = {
+                                Text(
+                                    text = course.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.widthIn(max = 180.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+
+                // 2. Filtrado por Semestre
                 Text(
                     text = "Filtrar por Semestre",
                     style = MaterialTheme.typography.titleMedium,
@@ -120,10 +151,9 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 2. Opción Checkbox: Mostrar u ocultar tareas sin fecha límite
+                // 3. Opción Checkbox: Mostrar u ocultar tareas sin fecha límite
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
@@ -195,10 +225,10 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
-                    value = courseSearchQuery,
-                    onValueChange = { courseSearchQuery = it },
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Buscar curso...") },
+                    placeholder = { Text("Buscar tarea...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     shape = MaterialTheme.shapes.medium,
                     singleLine = true
@@ -207,19 +237,22 @@ fun DashboardScreen(
                 IconButton(
                     onClick = { showFilterBottomSheet = true },
                     colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (selectedSemester != null || !showUndatedTasks) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = if (hasActiveFilters) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                     )
                 ) {
                     Icon(
                         Icons.Default.MoreVert,
                         contentDescription = "Opciones y Filtros",
-                        tint = if (selectedSemester != null || !showUndatedTasks) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (hasActiveFilters) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Semester Active Indicator Banner (if filtered)
-            if (selectedSemester != null && selectedSemester != "Todos") {
+            // Active Filters Banner (if filtered by course or semester)
+            val selectedCourseName = remember(courses, selectedCourseId) {
+                courses.find { it.id == selectedCourseId }?.name
+            }
+            if (selectedCourseName != null || (selectedSemester != null && selectedSemester != "Todos")) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -227,46 +260,30 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val filterLabels = buildList {
+                        if (selectedCourseName != null) add(selectedCourseName)
+                        if (selectedSemester != null && selectedSemester != "Todos") add(selectedSemester)
+                    }.joinToString(" • ")
+
                     Text(
-                        text = "Mostrando: $selectedSemester",
+                        text = "Filtro: $filterLabels",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
-                        onClick = { onSemesterSelect(null) },
+                        onClick = { 
+                            onCourseSelect(null)
+                            onSemesterSelect(null)
+                        },
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("Quitar filtro", style = MaterialTheme.typography.labelSmall)
+                        Text("Quitar filtros", style = MaterialTheme.typography.labelSmall)
                     }
-                }
-            }
-
-            // Course Filter Row
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    FilterChip(
-                        selected = selectedCourseId == null,
-                        onClick = { onCourseSelect(null) },
-                        label = { Text("Todos") }
-                    )
-                }
-                items(filteredCourses) { course ->
-                    FilterChip(
-                        selected = selectedCourseId == course.id,
-                        onClick = { onCourseSelect(course.id) },
-                        label = { 
-                            Text(
-                                text = course.name,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 150.dp)
-                            ) 
-                        }
-                    )
                 }
             }
 
@@ -280,17 +297,25 @@ fun DashboardScreen(
                 }
             }
 
+            val queryFilteredAssignments = remember(assignments, searchQuery) {
+                if (searchQuery.isBlank()) assignments
+                else assignments.filter { 
+                    it.assignment.name.contains(searchQuery, ignoreCase = true) ||
+                    it.courseName.contains(searchQuery, ignoreCase = true)
+                }
+            }
+
             val filteredAssignments = when (selectedTab) {
                 0 -> {
                     // Pendientes: sin fecha límite primero, luego por due_at ascendente
-                    assignments
+                    queryFilteredAssignments
                         .filter { it.assignment.status == "upcoming" }
                         .sortedWith(compareBy<AssignmentUiModel> { if (it.assignment.dueAt == null) 0 else 1 }
                             .thenBy { it.assignment.dueAt ?: "" })
                 }
                 1 -> {
                     // Completadas: ordenadas por última entrega (submittedAt o gradedAt o dueAt) descendente
-                    assignments
+                    queryFilteredAssignments
                         .filter { it.assignment.status == "completed" }
                         .sortedByDescending { 
                             it.assignment.submittedAt ?: it.assignment.gradedAt ?: it.assignment.dueAt ?: "" 
@@ -298,16 +323,20 @@ fun DashboardScreen(
                 }
                 else -> {
                     // Faltantes: por due_at ascendente
-                    assignments
+                    queryFilteredAssignments
                         .filter { it.assignment.status == "missing" }
                         .sortedBy { it.assignment.dueAt ?: "" }
                 }
             }
 
-            val emptyMessage = when (selectedTab) {
-                0 -> "No tienes tareas pendientes próximas"
-                1 -> "No se encontraron tareas completadas"
-                else -> "¡Excelente! No tienes tareas faltantes atrasadas"
+            val emptyMessage = if (searchQuery.isNotBlank()) {
+                "No se encontraron tareas que coincidan con \"$searchQuery\""
+            } else {
+                when (selectedTab) {
+                    0 -> "No tienes tareas pendientes próximas"
+                    1 -> "No se encontraron tareas completadas"
+                    else -> "¡Excelente! No tienes tareas faltantes atrasadas"
+                }
             }
 
             if (filteredAssignments.isEmpty()) {
