@@ -19,6 +19,9 @@ class MainViewModel @Inject constructor(
     private val _startDestination = MutableStateFlow<String?>(null)
     val startDestination: StateFlow<String?> = _startDestination.asStateFlow()
 
+    private val _isBiometricLocked = MutableStateFlow(false)
+    val isBiometricLocked: StateFlow<Boolean> = _isBiometricLocked.asStateFlow()
+
     init {
         checkSession()
     }
@@ -26,7 +29,28 @@ class MainViewModel @Inject constructor(
     private fun checkSession() {
         viewModelScope.launch {
             val token = preferencesManager.accessToken.first()
-            _startDestination.value = if (token.isNullOrBlank()) "onboarding_flow" else "main_flow"
+            val biometricEnabled = preferencesManager.biometricLock.first()
+            if (token.isNullOrBlank()) {
+                _startDestination.value = "onboarding_flow"
+                _isBiometricLocked.value = false
+            } else {
+                _startDestination.value = "main_flow"
+                _isBiometricLocked.value = biometricEnabled
+            }
+        }
+    }
+
+    fun unlockApp() {
+        _isBiometricLocked.value = false
+    }
+
+    fun lockApp() {
+        viewModelScope.launch {
+            val token = preferencesManager.accessToken.first()
+            val biometricEnabled = preferencesManager.biometricLock.first()
+            if (!token.isNullOrBlank() && biometricEnabled) {
+                _isBiometricLocked.value = true
+            }
         }
     }
 }

@@ -21,6 +21,15 @@ interface AssignmentDao {
     @Query("UPDATE assignments SET notificationSent = :sent WHERE id = :id")
     suspend fun updateNotificationSent(id: Long, sent: Boolean)
 
+    @Query("UPDATE assignments SET notified24h = 1 WHERE id = :id")
+    suspend fun markNotified24h(id: Long)
+
+    @Query("UPDATE assignments SET notified3h = 1 WHERE id = :id")
+    suspend fun markNotified3h(id: Long)
+
+    @Query("UPDATE assignments SET notified30m = 1 WHERE id = :id")
+    suspend fun markNotified30m(id: Long)
+
     @Query("DELETE FROM assignments")
     suspend fun deleteAll()
 }

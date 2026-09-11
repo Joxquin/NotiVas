@@ -24,3 +24,6 @@ app/google-services.json
 # Keystores
 *.jks
 *.keystore
+
+# Agents / IDE assistants
+.agents/

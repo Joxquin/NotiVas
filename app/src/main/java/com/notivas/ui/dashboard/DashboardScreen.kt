@@ -1,497 +1,1149 @@
 package com.notivas.ui.dashboard
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.notivas.data.model.Assignment
 import com.notivas.data.model.Course
-import com.notivas.data.model.PlannerItem
-
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.notivas.data.model.UserProfile
+import java.time.LocalDate
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DashboardScreen(
-    assignments: List<AssignmentUiModel>,
-    plannerTasks: List<PlannerItem>,
-    courses: List<Course>,
-    selectedCourseId: Long?,
-    selectedSemester: String?,
-    availableSemesters: List<String>,
-    showUndatedTasks: Boolean,
-    isRefreshing: Boolean,
-    onCourseSelect: (Long?) -> Unit,
-    onSemesterSelect: (String?) -> Unit,
-    onToggleShowUndated: (Boolean) -> Unit,
-    onRefresh: () -> Unit
+        userProfile: UserProfile?,
+        urgentAssignments: List<AssignmentUiModel>,
+        weeklySchedule: List<DaySchedule>,
+        courseStats: List<CourseStat>,
+        selectedDate: LocalDate?,
+        selectedDateAssignments: List<AssignmentUiModel>,
+        inspectedCourse: Course?,
+        inspectedCourseAssignments: List<AssignmentUiModel>,
+        inspectedCourseForums: List<com.notivas.data.model.PlannerItem> = emptyList(),
+        institutionName: String = "CANVAS",
+        isRefreshing: Boolean,
+        lazyListState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
+        onDateSelect: (LocalDate?) -> Unit,
+        onInspectCourse: (Course?) -> Unit,
+        onRefresh: () -> Unit
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Pendientes", "Completadas", "Faltantes")
-    var searchQuery by remember { mutableStateOf("") }
-    var showFilterBottomSheet by remember { mutableStateOf(false) }
+        val pullToRefreshState = rememberPullToRefreshState()
+        val pullDistance = pullToRefreshState.distanceFraction
 
-    val pullToRefreshState = rememberPullToRefreshState()
-    val pullDistance = pullToRefreshState.distanceFraction
-
-    val hasActiveFilters = selectedSemester != null || !showUndatedTasks || selectedCourseId != null
-
-    // Bottom Sheet for Filters
-    if (showFilterBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showFilterBottomSheet = false },
-            sheetState = rememberModalBottomSheetState()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Filtros de Tareas",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    TextButton(onClick = {
-                        onSemesterSelect(null)
-                        onToggleShowUndated(true)
-                        onCourseSelect(null)
-                    }) {
-                        Text("Restablecer")
-                    }
-                }
-
-                HorizontalDivider(thickness = 0.5.dp)
-
-                // 1. Filtrado por Curso
-                Text(
-                    text = "Filtrar por Curso",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+        // Modal Bottom Sheet al presionar una asignatura
+        if (inspectedCourse != null) {
+                CourseDetailBottomSheet(
+                        course = inspectedCourse,
+                        assignments = inspectedCourseAssignments,
+                        forums = inspectedCourseForums,
+                        onDismiss = { onInspectCourse(null) }
                 )
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    item {
-                        FilterChip(
-                            selected = selectedCourseId == null,
-                            onClick = { onCourseSelect(null) },
-                            label = { Text("Todos los cursos") }
-                        )
-                    }
-                    items(courses) { course ->
-                        FilterChip(
-                            selected = selectedCourseId == course.id,
-                            onClick = { onCourseSelect(course.id) },
-                            label = {
-                                Text(
-                                    text = course.name,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.widthIn(max = 180.dp)
-                                )
-                            }
-                        )
-                    }
-                }
-
-                // 2. Filtrado por Semestre
-                Text(
-                    text = "Filtrar por Semestre",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    item {
-                        FilterChip(
-                            selected = selectedSemester == null || selectedSemester == "Todos",
-                            onClick = { onSemesterSelect(null) },
-                            label = { Text("Todos") }
-                        )
-                    }
-                    items(availableSemesters) { sem ->
-                        FilterChip(
-                            selected = selectedSemester == sem,
-                            onClick = { onSemesterSelect(sem) },
-                            label = { Text(sem) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // 3. Opción Checkbox: Mostrar u ocultar tareas sin fecha límite
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = showUndatedTasks,
-                        onCheckedChange = { onToggleShowUndated(it) }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = "Mostrar tareas sin fecha límite",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "Incluye actividades y laboratorios continuos sin fecha de entrega asignada",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = { showFilterBottomSheet = false },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Aplicar Filtros")
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-            }
         }
-    }
 
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = onRefresh,
-        modifier = Modifier.fillMaxSize(),
-        state = pullToRefreshState,
-        indicator = { }
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Push-down indicator
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(
-                        if (isRefreshing) 80.dp 
-                        else (80.dp * pullDistance).coerceAtMost(100.dp)
-                    )
-                    .graphicsLayer {
-                        alpha = if (isRefreshing) 1f else (pullDistance * 2).coerceIn(0f, 1f)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                if (isRefreshing) {
-                    LoadingIndicator()
-                } else if (pullDistance > 0.05f) {
-                    LoadingIndicator(progress = { pullDistance.coerceIn(0f, 1f) })
+        // Transición física elástica (Bouncy Spring) al arrastrar y soltar
+        val targetHeight =
+                when {
+                        isRefreshing -> 80.dp
+                        pullDistance > 0f -> (84.dp * pullDistance).coerceAtMost(110.dp)
+                        else -> 0.dp
                 }
-            }
-
-            // Search Bar with 3-Dots Filter Menu
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Buscar tarea...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    shape = MaterialTheme.shapes.medium,
-                    singleLine = true
+        val animatedHeight by
+                animateDpAsState(
+                        targetValue = targetHeight,
+                        animationSpec =
+                                spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                ),
+                        label = "pullToRefreshBouncyHeight"
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = { showFilterBottomSheet = true },
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (hasActiveFilters) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                    )
+        val animatedScale by
+                animateFloatAsState(
+                        targetValue =
+                                if (isRefreshing) 1f else (pullDistance * 1.1f).coerceIn(0.5f, 1f),
+                        animationSpec =
+                                spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                ),
+                        label = "pullToRefreshBouncyScale"
+                )
+
+        PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+                state = pullToRefreshState,
+                indicator = {}
+        ) {
+                LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "Opciones y Filtros",
-                        tint = if (hasActiveFilters) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+                        // Push-down indicator para PullToRefresh (MD3 Expressive Loading Indicator
+                        // con efecto Bouncy)
+                        item {
+                                Box(
+                                        modifier =
+                                                Modifier.fillMaxWidth()
+                                                        .height(animatedHeight)
+                                                        .graphicsLayer {
+                                                                scaleX = animatedScale
+                                                                scaleY = animatedScale
+                                                                alpha =
+                                                                        if (isRefreshing) 1f
+                                                                        else
+                                                                                (pullDistance *
+                                                                                                2.2f)
+                                                                                        .coerceIn(
+                                                                                                0f,
+                                                                                                1f
+                                                                                        )
+                                                        },
+                                        contentAlignment = Alignment.Center
+                                ) {
+                                        if (isRefreshing) {
+                                                LoadingIndicator()
+                                        } else if (pullDistance > 0.05f) {
+                                                LoadingIndicator(
+                                                        progress = { pullDistance.coerceIn(0f, 1f) }
+                                                )
+                                        }
+                                }
+                        }
 
-            // Active Filters Banner (if filtered by course or semester)
-            val selectedCourseName = remember(courses, selectedCourseId) {
-                courses.find { it.id == selectedCourseId }?.name
-            }
-            if (selectedCourseName != null || (selectedSemester != null && selectedSemester != "Todos")) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val filterLabels = buildList {
-                        if (selectedCourseName != null) add(selectedCourseName)
-                        if (selectedSemester != null && selectedSemester != "Todos") add(selectedSemester)
-                    }.joinToString(" • ")
+                        item {
+                                HeaderContextualSection(
+                                        userProfile = userProfile,
+                                        institutionName = institutionName,
+                                        isRefreshing = isRefreshing,
+                                        onRefresh = onRefresh
+                                )
+                        }
 
-                    Text(
-                        text = "Filtro: $filterLabels",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(
-                        onClick = { 
-                            onCourseSelect(null)
-                            onSemesterSelect(null)
-                        },
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("Quitar filtros", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
+                        item { UpcomingUrgentSection(urgentAssignments = urgentAssignments) }
 
-            PrimaryTabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(title) }
-                    )
-                }
-            }
+                        item {
+                                WeeklyScheduleSection(
+                                        weeklySchedule = weeklySchedule,
+                                        selectedDate = selectedDate,
+                                        onDateSelect = onDateSelect
+                                )
+                        }
 
-            val queryFilteredAssignments = remember(assignments, searchQuery) {
-                if (searchQuery.isBlank()) assignments
-                else assignments.filter { 
-                    it.assignment.name.contains(searchQuery, ignoreCase = true) ||
-                    it.courseName.contains(searchQuery, ignoreCase = true)
-                }
-            }
+                        if (selectedDate != null) {
+                                item {
+                                        val dateFormatted =
+                                                selectedDate.format(
+                                                        DateTimeFormatter.ofPattern(
+                                                                "EEEE dd 'de' MMMM"
+                                                        )
+                                                )
+                                        Column(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
+                                                                .padding(horizontal = 16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.SpaceBetween,
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Text(
+                                                                text = "Entregas: $dateFormatted",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .titleSmall,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color =
+                                                                        MaterialTheme.colorScheme
+                                                                                .primary
+                                                        )
+                                                        TextButton(
+                                                                onClick = { onDateSelect(null) },
+                                                                contentPadding = PaddingValues(0.dp)
+                                                        ) {
+                                                                Text(
+                                                                        "Ver todo",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .labelSmall
+                                                                )
+                                                        }
+                                                }
 
-            val filteredAssignments = when (selectedTab) {
-                0 -> {
-                    // Pendientes: sin fecha límite primero, luego por due_at ascendente
-                    queryFilteredAssignments
-                        .filter { it.assignment.status == "upcoming" }
-                        .sortedWith(compareBy<AssignmentUiModel> { if (it.assignment.dueAt == null) 0 else 1 }
-                            .thenBy { it.assignment.dueAt ?: "" })
-                }
-                1 -> {
-                    // Completadas: ordenadas por última entrega (submittedAt o gradedAt o dueAt) descendente
-                    queryFilteredAssignments
-                        .filter { it.assignment.status == "completed" }
-                        .sortedByDescending { 
-                            it.assignment.submittedAt ?: it.assignment.gradedAt ?: it.assignment.dueAt ?: "" 
+                                                if (selectedDateAssignments.isEmpty()) {
+                                                        Card(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                shape = MaterialTheme.shapes.medium,
+                                                                colors =
+                                                                        CardDefaults.cardColors(
+                                                                                containerColor =
+                                                                                        MaterialTheme
+                                                                                                .colorScheme
+                                                                                                .surfaceContainerLow
+                                                                        )
+                                                        ) {
+                                                                Text(
+                                                                        text =
+                                                                                "No hay entregas programadas para esta fecha.",
+                                                                        modifier =
+                                                                                Modifier.padding(
+                                                                                        16.dp
+                                                                                ),
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .bodyMedium,
+                                                                        color =
+                                                                                MaterialTheme
+                                                                                        .colorScheme
+                                                                                        .onSurfaceVariant
+                                                                )
+                                                        }
+                                                } else {
+                                                        selectedDateAssignments.forEach { item ->
+                                                                ExpressiveAssignmentCard(
+                                                                        uiModel = item
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        // 5. Matriz de Asignaturas Inscritas (Al presionar abre
+                        // CourseDetailBottomSheet)
+                        item {
+                                CoursesMatrixSection(
+                                        courseStats = courseStats,
+                                        onCourseClick = onInspectCourse
+                                )
                         }
                 }
-                else -> {
-                    // Faltantes: por due_at ascendente
-                    queryFilteredAssignments
-                        .filter { it.assignment.status == "missing" }
-                        .sortedBy { it.assignment.dueAt ?: "" }
-                }
-            }
-
-            val emptyMessage = if (searchQuery.isNotBlank()) {
-                "No se encontraron tareas que coincidan con \"$searchQuery\""
-            } else {
-                when (selectedTab) {
-                    0 -> "No tienes tareas pendientes próximas"
-                    1 -> "No se encontraron tareas completadas"
-                    else -> "¡Excelente! No tienes tareas faltantes atrasadas"
-                }
-            }
-
-            if (filteredAssignments.isEmpty()) {
-                EmptySection(emptyMessage)
-            } else {
-                AssignmentList(filteredAssignments, selectedTab)
-            }
         }
-    }
 }
 
 @Composable
-fun EmptySection(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
+fun HeaderContextualSection(
+        userProfile: UserProfile?,
+        institutionName: String,
+        isRefreshing: Boolean,
+        onRefresh: () -> Unit
+) {
+        val firstName =
+                remember(userProfile) {
+                        userProfile?.name?.trim()?.split(" ")?.firstOrNull() ?: "Estudiante"
+                }
 
-@Composable
-fun AssignmentList(assignments: List<AssignmentUiModel>, tabIndex: Int) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(assignments) { uiModel ->
-            AssignmentCard(uiModel, tabIndex)
-        }
-    }
-}
-
-@Composable
-fun AssignmentCard(uiModel: AssignmentUiModel, tabIndex: Int) {
-    val assignment = uiModel.assignment
-    val accentColor = when (assignment.status) {
-        "upcoming" -> MaterialTheme.colorScheme.primary
-        "completed" -> Color(0xFF388E3C) // Green
-        else -> MaterialTheme.colorScheme.error
-    }
-
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
+        Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = uiModel.courseName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = accentColor,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // Status badge
-                if (assignment.status == "completed") {
-                    val gradeText = when {
-                        assignment.score != null -> "${assignment.score} pts"
-                        assignment.grade != null -> assignment.grade
-                        else -> null
-                    }
-                    if (gradeText != null) {
-                        Badge(containerColor = Color(0xFFE8F5E9)) {
-                            Text("Calificada: $gradeText", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        Badge(containerColor = Color(0xFFFFF9C4)) {
-                            Text("Entregada", color = Color(0xFFF57F17), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                } else if (assignment.status == "missing") {
-                    Badge(containerColor = MaterialTheme.colorScheme.errorContainer) {
-                        Text("Vencida", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
-                    }
-                } else if (assignment.dueAt == null) {
-                    Badge(containerColor = Color(0xFFEDE7F6)) {
-                        Text("Sin fecha límite", color = Color(0xFF5E35B1), fontWeight = FontWeight.Bold)
-                    }
+        ) {
+                Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                                text = "Hola, $firstName",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                                text = institutionName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = assignment.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 28.sp
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Details (Points, Submitted date, Due date)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val ptsText = assignment.pointsPossible?.let { "$it pts" } ?: "Sin puntaje"
-                Text(
-                    text = "Puntos: $ptsText",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (assignment.submittedAt != null) {
-                    val submittedStr = try {
-                        val dt = java.time.ZonedDateTime.parse(assignment.submittedAt)
-                            .withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
-                        dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"))
-                    } catch (e: Exception) { assignment.submittedAt }
-                    Text(
-                        text = "Entregado: $submittedStr",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF00838F),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                } else if (assignment.gradedAt != null && assignment.status == "completed") {
-                    val gradedStr = try {
-                        val dt = java.time.ZonedDateTime.parse(assignment.gradedAt)
-                            .withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
-                        dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"))
-                    } catch (e: Exception) { assignment.gradedAt }
-                    Text(
-                        text = "Evaluado: $gradedStr",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF00838F),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                val dueText = assignment.dueAt?.let {
-                    try {
-                        val dt = java.time.ZonedDateTime.parse(it)
-                            .withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
-                        dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"))
-                    } catch (e: Exception) { it }
-                } ?: "Sin fecha límite"
-
-                val dueLabel = if (assignment.status == "missing") "Venció:" else "Vence:"
-                Text(
-                    text = "$dueLabel $dueText",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = if (assignment.status == "missing") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                )
-            }
         }
-    }
+}
+
+@Composable
+fun UpcomingUrgentSection(urgentAssignments: List<AssignmentUiModel>) {
+        Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+                Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text(
+                                        text = "Para Hoy y Mañana",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                )
+                                if (urgentAssignments.isNotEmpty()) {
+                                        Badge(
+                                                containerColor =
+                                                        MaterialTheme.colorScheme.errorContainer,
+                                                contentColor =
+                                                        MaterialTheme.colorScheme.onErrorContainer
+                                        ) {
+                                                Text(
+                                                        text = "${urgentAssignments.size} urgentes",
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier =
+                                                                Modifier.padding(horizontal = 4.dp)
+                                                )
+                                        }
+                                }
+                        }
+                }
+
+                if (urgentAssignments.isEmpty()) {
+                        Card(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                shape = MaterialTheme.shapes.large,
+                                colors =
+                                        CardDefaults.cardColors(
+                                                containerColor =
+                                                        MaterialTheme.colorScheme
+                                                                .surfaceContainerLow
+                                        )
+                        ) {
+                                Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Verified,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(28.dp)
+                                        )
+                                        Column {
+                                                Text(
+                                                        text = "¡Todo al día!",
+                                                        style = MaterialTheme.typography.titleSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                        text =
+                                                                "No tienes entregas programadas para hoy ni mañana.",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color =
+                                                                MaterialTheme.colorScheme
+                                                                        .onSurfaceVariant
+                                                )
+                                        }
+                                }
+                        }
+                } else {
+                        LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                                items(urgentAssignments, key = { it.assignment.id }) { item ->
+                                        UrgentTaskCard(uiModel = item)
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+fun UrgentTaskCard(uiModel: AssignmentUiModel) {
+        val a = uiModel.assignment
+        val dueFormatted =
+                remember(a.dueAt) {
+                        a.dueAt?.let {
+                                try {
+                                        val zdt =
+                                                ZonedDateTime.parse(it)
+                                                        .withZoneSameInstant(
+                                                                java.time.ZoneId.systemDefault()
+                                                        )
+                                        zdt.format(DateTimeFormatter.ofPattern("EEE dd, HH:mm"))
+                                } catch (e: Exception) {
+                                        it
+                                }
+                        }
+                                ?: "Pronto"
+                }
+
+        Card(
+                modifier = Modifier.width(260.dp).height(160.dp),
+                shape = MaterialTheme.shapes.large,
+                colors =
+                        CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        )
+        ) {
+                Column(
+                        modifier = Modifier.fillMaxSize().padding(14.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Text(
+                                                text = uiModel.courseName,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                        Badge(
+                                                containerColor =
+                                                        MaterialTheme.colorScheme.errorContainer,
+                                                contentColor =
+                                                        MaterialTheme.colorScheme.onErrorContainer
+                                        ) {
+                                                Text(
+                                                        dueFormatted,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                )
+                                        }
+                                }
+
+                                Text(
+                                        text = a.name,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                )
+                        }
+
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = a.pointsPossible?.let { "${it.toInt()} pts" }
+                                                        ?: "Sin nota",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.secondaryContainer
+                                ) {
+                                        Row(
+                                                modifier =
+                                                        Modifier.padding(
+                                                                horizontal = 8.dp,
+                                                                vertical = 4.dp
+                                                        ),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Default.AccessTime,
+                                                        contentDescription = null,
+                                                        tint =
+                                                                MaterialTheme.colorScheme
+                                                                        .onSecondaryContainer,
+                                                        modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                        text = "Pendiente",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color =
+                                                                MaterialTheme.colorScheme
+                                                                        .onSecondaryContainer,
+                                                        fontWeight = FontWeight.Medium
+                                                )
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+fun WeeklyScheduleSection(
+        weeklySchedule: List<DaySchedule>,
+        selectedDate: LocalDate?,
+        onDateSelect: (LocalDate?) -> Unit
+) {
+        Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                shape = MaterialTheme.shapes.large,
+                colors =
+                        CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+        ) {
+                Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Outlined.CalendarMonth,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                                text = "Cronograma Semanal",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                }
+
+                                if (selectedDate != null) {
+                                        TextButton(
+                                                onClick = { onDateSelect(null) },
+                                                contentPadding = PaddingValues(0.dp)
+                                        ) {
+                                                Text(
+                                                        "Ver todo",
+                                                        style = MaterialTheme.typography.labelSmall
+                                                )
+                                        }
+                                }
+                        }
+
+                        // Fila de 7 días
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                                weeklySchedule.forEach { day ->
+                                        val isSelected = selectedDate == day.date
+                                        DayItem(
+                                                day = day,
+                                                isSelected = isSelected,
+                                                onClick = { onDateSelect(day.date) }
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+fun DayItem(day: DaySchedule, isSelected: Boolean, onClick: () -> Unit) {
+        val containerColor =
+                when {
+                        isSelected -> MaterialTheme.colorScheme.primary
+                        day.isToday -> MaterialTheme.colorScheme.primaryContainer
+                        else -> Color.Transparent
+                }
+        val contentColor =
+                when {
+                        isSelected -> MaterialTheme.colorScheme.onPrimary
+                        day.isToday -> MaterialTheme.colorScheme.onPrimaryContainer
+                        else -> MaterialTheme.colorScheme.onSurface
+                }
+
+        Column(
+                modifier =
+                        Modifier.clip(MaterialTheme.shapes.medium)
+                                .background(containerColor)
+                                .clickable(onClick = onClick)
+                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+                Text(
+                        text = day.dayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color =
+                                if (isSelected || day.isToday) contentColor
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                )
+                Text(
+                        text = day.dayNumber.toString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = contentColor,
+                        fontWeight =
+                                if (day.isToday || isSelected) FontWeight.Bold
+                                else FontWeight.Normal
+                )
+                if (day.taskCount > 0) {
+                        Box(
+                                modifier =
+                                        Modifier.size(5.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                        if (isSelected) contentColor
+                                                        else MaterialTheme.colorScheme.error
+                                                )
+                        )
+                } else {
+                        Spacer(modifier = Modifier.size(5.dp))
+                }
+        }
+}
+
+@Composable
+fun CoursesMatrixSection(courseStats: List<CourseStat>, onCourseClick: (Course) -> Unit) {
+        if (courseStats.isEmpty()) return
+
+        Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Text(
+                                text = "Asignaturas Inscritas",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                                text = "${courseStats.size} cursos (toca para ver tareas)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                }
+
+                // 2-column grid
+                val chunked = courseStats.chunked(2)
+                chunked.forEach { rowCourses ->
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                rowCourses.forEach { stat ->
+                                        CourseCard(
+                                                stat = stat,
+                                                onClick = { onCourseClick(stat.course) },
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                }
+                                if (rowCourses.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+fun CourseCard(stat: CourseStat, onClick: () -> Unit, modifier: Modifier = Modifier) {
+        Card(
+                modifier = modifier.height(108.dp).clickable(onClick = onClick),
+                shape = MaterialTheme.shapes.large,
+                colors =
+                        CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+        ) {
+                Column(
+                        modifier = Modifier.fillMaxSize().padding(12.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = stat.course.courseCode ?: "ASIGNATURA",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                if (stat.pendingCount > 0) {
+                                        Badge(
+                                                containerColor =
+                                                        MaterialTheme.colorScheme
+                                                                .surfaceContainerHighest,
+                                                contentColor = MaterialTheme.colorScheme.onSurface
+                                        ) {
+                                                Text(
+                                                        "${stat.pendingCount} pend.",
+                                                        style = MaterialTheme.typography.labelSmall
+                                                )
+                                        }
+                                } else {
+                                        Badge(
+                                                containerColor =
+                                                        MaterialTheme.colorScheme.tertiaryContainer,
+                                                contentColor =
+                                                        MaterialTheme.colorScheme
+                                                                .onTertiaryContainer
+                                        ) {
+                                                Text(
+                                                        "Al día",
+                                                        style = MaterialTheme.typography.labelSmall
+                                                )
+                                        }
+                                }
+                        }
+
+                        Text(
+                                text = stat.course.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                        )
+                }
+        }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CourseDetailBottomSheet(
+        course: Course,
+        assignments: List<AssignmentUiModel>,
+        forums: List<com.notivas.data.model.PlannerItem> = emptyList(),
+        onDismiss: () -> Unit
+) {
+        var selectedTab by remember { mutableIntStateOf(0) }
+        val tabs = listOf("Pendientes", "Calificadas", "Vencidas", "Foros")
+
+        val filteredAssignments =
+                when (selectedTab) {
+                        0 ->
+                                assignments
+                                        .filter { it.assignment.status == "upcoming" }
+                                        .sortedWith(
+                                                compareBy<AssignmentUiModel> {
+                                                        if (it.assignment.dueAt == null) 0 else 1
+                                                }
+                                                        .thenBy { it.assignment.dueAt ?: "" }
+                                        )
+                        1 ->
+                                assignments
+                                        .filter { it.assignment.status == "completed" }
+                                        .sortedByDescending {
+                                                it.assignment.submittedAt
+                                                        ?: it.assignment.gradedAt
+                                                                ?: it.assignment.dueAt ?: ""
+                                        }
+                        2 ->
+                                assignments.filter { it.assignment.status == "missing" }.sortedBy {
+                                        it.assignment.dueAt ?: ""
+                                }
+                        else -> emptyList()
+                }
+
+        ModalBottomSheet(
+                onDismissRequest = onDismiss,
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+                Column(
+                        modifier =
+                                Modifier.fillMaxWidth()
+                                        .fillMaxHeight(0.85f)
+                                        .padding(horizontal = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                        // Header del curso
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                                text = course.courseCode ?: "CURSO",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                                text = course.name,
+                                                style = MaterialTheme.typography.titleLarge,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                        )
+                                }
+                                IconButton(onClick = onDismiss) {
+                                        Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Cerrar"
+                                        )
+                                }
+                        }
+
+                        // Tabs del curso
+                        PrimaryTabRow(
+                                selectedTabIndex = selectedTab,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                contentColor = MaterialTheme.colorScheme.primary
+                        ) {
+                                tabs.forEachIndexed { index, title ->
+                                        Tab(
+                                                selected = selectedTab == index,
+                                                onClick = { selectedTab = index },
+                                                text = {
+                                                        Text(
+                                                                text = title,
+                                                                fontWeight =
+                                                                        if (selectedTab == index)
+                                                                                FontWeight.SemiBold
+                                                                        else FontWeight.Normal
+                                                        )
+                                                }
+                                        )
+                                }
+                        }
+
+                        // Contenido: Foros vs Tareas
+                        if (selectedTab == 3) {
+                                if (forums.isEmpty()) {
+                                        Box(
+                                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                                Text(
+                                                        text =
+                                                                "No hay foros o debates registrados en este curso.",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color =
+                                                                MaterialTheme.colorScheme
+                                                                        .onSurfaceVariant,
+                                                        textAlign = TextAlign.Center
+                                                )
+                                        }
+                                } else {
+                                        LazyColumn(
+                                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                                contentPadding = PaddingValues(bottom = 24.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                                items(forums, key = { it.plannableId }) { forum ->
+                                                        ForumItemCard(forum = forum)
+                                                }
+                                        }
+                                }
+                        } else {
+                                // Lista de tareas del curso
+                                if (filteredAssignments.isEmpty()) {
+                                        Box(
+                                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                                Text(
+                                                        text =
+                                                                when (selectedTab) {
+                                                                        0 ->
+                                                                                "No hay tareas pendientes en este curso."
+                                                                        1 ->
+                                                                                "No hay tareas calificadas aún."
+                                                                        else ->
+                                                                                "¡Excelente! No tienes tareas vencidas en este curso."
+                                                                },
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color =
+                                                                MaterialTheme.colorScheme
+                                                                        .onSurfaceVariant,
+                                                        textAlign = TextAlign.Center
+                                                )
+                                        }
+                                } else {
+                                        LazyColumn(
+                                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                                contentPadding = PaddingValues(bottom = 24.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                                items(
+                                                        filteredAssignments,
+                                                        key = { it.assignment.id }
+                                                ) { item ->
+                                                        ExpressiveAssignmentCard(uiModel = item)
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+fun ForumItemCard(forum: com.notivas.data.model.PlannerItem) {
+        val dateText =
+                remember(forum.plannableDate) {
+                        forum.plannableDate?.let {
+                                try {
+                                        val date =
+                                                java.time.ZonedDateTime.parse(it)
+                                                        .withZoneSameInstant(
+                                                                java.time.ZoneId.systemDefault()
+                                                        )
+                                        val formatter =
+                                                java.time.format.DateTimeFormatter.ofPattern(
+                                                        "dd/MM/yyyy hh:mm a"
+                                                )
+                                        date.format(formatter)
+                                } catch (e: Exception) {
+                                        it
+                                }
+                        }
+                                ?: "Sin fecha límite"
+                }
+
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors =
+                        CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        )
+        ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "FORO / DEBATE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                Badge(
+                                        containerColor =
+                                                MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor =
+                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                ) { Text("Foro", style = MaterialTheme.typography.labelSmall) }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                                text = forum.plannable.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Fecha:",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                        text = dateText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                )
+                        }
+                }
+        }
+}
+
+@Composable
+fun ExpressiveAssignmentCard(uiModel: AssignmentUiModel) {
+        val assignment = uiModel.assignment
+        val accentColor =
+                when (assignment.status) {
+                        "upcoming" -> MaterialTheme.colorScheme.primary
+                        "completed" -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.error
+                }
+
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors =
+                        CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        )
+        ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = uiModel.courseName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = accentColor,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                )
+
+                                when (assignment.status) {
+                                        "completed" -> {
+                                                val gradeText =
+                                                        when {
+                                                                assignment.score != null ->
+                                                                        "${assignment.score} pts"
+                                                                assignment.grade != null ->
+                                                                        assignment.grade
+                                                                else -> "Entregada"
+                                                        }
+                                                Badge(
+                                                        containerColor =
+                                                                MaterialTheme.colorScheme
+                                                                        .tertiaryContainer,
+                                                        contentColor =
+                                                                MaterialTheme.colorScheme
+                                                                        .onTertiaryContainer
+                                                ) { Text(gradeText, fontWeight = FontWeight.Bold) }
+                                        }
+                                        "missing" -> {
+                                                Badge(
+                                                        containerColor =
+                                                                MaterialTheme.colorScheme
+                                                                        .errorContainer,
+                                                        contentColor =
+                                                                MaterialTheme.colorScheme
+                                                                        .onErrorContainer
+                                                ) { Text("Vencida", fontWeight = FontWeight.Bold) }
+                                        }
+                                        else -> {
+                                                if (assignment.dueAt == null) {
+                                                        Badge(
+                                                                containerColor =
+                                                                        MaterialTheme.colorScheme
+                                                                                .surfaceContainerHighest,
+                                                                contentColor =
+                                                                        MaterialTheme.colorScheme
+                                                                                .onSurfaceVariant
+                                                        ) {
+                                                                Text(
+                                                                        "Sin fecha",
+                                                                        fontWeight =
+                                                                                FontWeight.Medium
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                                text = assignment.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 22.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Details
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                val ptsText =
+                                        assignment.pointsPossible?.let { "${it.toInt()} pts" }
+                                                ?: "Sin puntos"
+                                Text(
+                                        text = "Valor: $ptsText",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                val dueText =
+                                        assignment.dueAt?.let {
+                                                try {
+                                                        val dt =
+                                                                ZonedDateTime.parse(it)
+                                                                        .withZoneSameInstant(
+                                                                                java.time.ZoneId
+                                                                                        .systemDefault()
+                                                                        )
+                                                        dt.format(
+                                                                DateTimeFormatter.ofPattern(
+                                                                        "dd/MM/yyyy hh:mm a"
+                                                                )
+                                                        )
+                                                } catch (e: Exception) {
+                                                        it
+                                                }
+                                        }
+                                                ?: "Sin fecha límite"
+
+                                val dueLabel =
+                                        if (assignment.status == "missing") "Venció:" else "Vence:"
+                                Text(
+                                        text = "$dueLabel $dueText",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color =
+                                                if (assignment.status == "missing")
+                                                        MaterialTheme.colorScheme.error
+                                                else MaterialTheme.colorScheme.onSurface
+                                )
+                        }
+                }
+        }
 }

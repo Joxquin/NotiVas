@@ -9,9 +9,12 @@ import com.google.gson.reflect.TypeToken
 import com.notivas.data.local.dao.AssignmentDao
 import com.notivas.data.local.dao.CourseDao
 import com.notivas.data.local.dao.PlannerItemDao
+import com.notivas.data.local.dao.SimulationDao
 import com.notivas.data.model.Assignment
 import com.notivas.data.model.Course
 import com.notivas.data.model.PlannerItem
+import com.notivas.data.model.SimulationGroup
+import com.notivas.data.model.SimulationItem
 import com.notivas.data.model.SubmissionDetails
 
 class Converters {
@@ -35,10 +38,15 @@ class Converters {
     }
 }
 
-@Database(entities = [Course::class, Assignment::class, PlannerItem::class], version = 5, exportSchema = false)
+@Database(
+    entities = [Course::class, Assignment::class, PlannerItem::class, SimulationGroup::class, SimulationItem::class],
+    version = 8,
+    exportSchema = false
+)
 @TypeConverters(Converters::class)
 abstract class CanvasDatabase : RoomDatabase() {
     abstract fun courseDao(): CourseDao
     abstract fun assignmentDao(): AssignmentDao
     abstract fun plannerItemDao(): PlannerItemDao
+    abstract fun simulationDao(): SimulationDao
 }

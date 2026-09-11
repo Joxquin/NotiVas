@@ -36,4 +36,7 @@ object DatabaseModule {
 
     @Provides
     fun providePlannerItemDao(db: CanvasDatabase): PlannerItemDao = db.plannerItemDao()
+
+    @Provides
+    fun provideSimulationDao(db: CanvasDatabase): com.notivas.data.local.dao.SimulationDao = db.simulationDao()
 }

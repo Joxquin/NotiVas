@@ -15,8 +15,8 @@ android {
         applicationId = "com.notivas"
         minSdk = 33
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.2.0"
+        versionCode = 3
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -54,7 +54,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.google.material)
-    implementation(libs.firebase.ai)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -85,6 +84,9 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil.compose)
+
+    // Biometrics
+    implementation(libs.androidx.biometric)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -10,6 +10,7 @@ data class Assignment(
     @SerializedName("name") val name: String,
     @SerializedName("description") val description: String? = null,
     @SerializedName("due_at") val dueAt: String? = null,
+    @SerializedName("lock_at") val lockAt: String? = null,
     @SerializedName("course_id") val courseId: Long,
     @SerializedName("points_possible") val pointsPossible: Double? = null,
     @SerializedName("html_url") val htmlUrl: String? = null,
@@ -22,7 +23,10 @@ data class Assignment(
     val gradedAt: String? = null,
     val score: Double? = null,
     val grade: String? = null,
-    val notificationSent: Boolean = false
+    val notificationSent: Boolean = false,
+    val notified24h: Boolean = false,
+    val notified3h: Boolean = false,
+    val notified30m: Boolean = false
 )
 
 data class SubmissionDetails(
