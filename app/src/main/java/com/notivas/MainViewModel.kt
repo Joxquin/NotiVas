@@ -22,6 +22,9 @@ class MainViewModel @Inject constructor(
     private val _isBiometricLocked = MutableStateFlow(false)
     val isBiometricLocked: StateFlow<Boolean> = _isBiometricLocked.asStateFlow()
 
+    private val _isReady = MutableStateFlow(false)
+    val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
+
     init {
         checkSession()
     }
@@ -37,6 +40,7 @@ class MainViewModel @Inject constructor(
                 _startDestination.value = "main_flow"
                 _isBiometricLocked.value = biometricEnabled
             }
+            _isReady.value = true
         }
     }
 

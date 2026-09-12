@@ -26,7 +26,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -45,8 +47,16 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+    private val mainViewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        splashScreen.setKeepOnScreenCondition {
+            !mainViewModel.isReady.value
+        }
+
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
@@ -65,7 +75,6 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            val mainViewModel: MainViewModel = hiltViewModel()
             val startDestination by mainViewModel.startDestination.collectAsState()
             val isBiometricLocked by mainViewModel.isBiometricLocked.collectAsState()
 

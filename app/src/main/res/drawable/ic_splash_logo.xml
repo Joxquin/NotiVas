@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path
+        android:fillColor="#1B2124"
+        android:pathData="M28,0L68,0A28,28 0,0 1,96 28L96,68A28,28 0,0 1,68 96L28,96A28,28 0,0 1,0 68L0,28A28,28 0,0 1,28 0Z" />
+    <path
+        android:strokeColor="#3F484A"
+        android:strokeWidth="1"
+        android:pathData="M28,4L68,4A24,24 0,0 1,92 28L92,68A24,24 0,0 1,68 92L28,92A24,24 0,0 1,4 68L4,28A24,24 0,0 1,28 4Z" />
+    <!-- Graduation cap top rhombus -->
+    <path
+        android:fillColor="#4FD8EB"
+        android:pathData="M48,24L76,38L48,52L20,38L48,24Z" />
+    <!-- Graduation cap neck in deep teal -->
+    <path
+        android:fillColor="#004F58"
+        android:pathData="M28,44V56C28,62.6 36.9,68 48,68C59.1,68 68,62.6 68,56V44L48,54L28,44Z" />
+    <!-- Tassel cord -->
+    <path
+        android:strokeColor="#CFBCFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M76,38V50" />
+    <!-- Tassel bead -->
+    <path
+        android:fillColor="#CFBCFF"
+        android:pathData="M76,44.5A3.5,3.5 0,1 1,75.99,44.5Z" />
+    <!-- Sparkle / AI Star in M3 Violet -->
+    <path
+        android:fillColor="#CFBCFF"
+        android:pathData="M68,22L70,27L75,29L70,31L68,36L66,31L61,29L66,27L68,22Z" />
+</vector>
