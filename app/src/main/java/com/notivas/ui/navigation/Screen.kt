@@ -8,5 +8,6 @@ sealed class Screen(val route: String) {
     object Foros : Screen("foros")
     object Notas : Screen("notas")
     object Simulador : Screen("simulador")
+    object Copilot : Screen("copilot")
     object Profile : Screen("profile")
 }

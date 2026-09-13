@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Person
@@ -44,6 +46,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.notivas.ui.copilot.CopilotScreen
+import com.notivas.ui.copilot.CopilotViewModel
 import com.notivas.ui.dashboard.DashboardScreen
 import com.notivas.ui.dashboard.DashboardViewModel
 import com.notivas.ui.foros.ForosScreen
@@ -63,7 +67,7 @@ fun MainScreen(onLogout: () -> Unit) {
     // We get the viewmodel here to use it in the TopAppBar action
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
 
-    val items = listOf(Screen.Dashboard, Screen.Notas, Screen.Profile)
+    val items = listOf(Screen.Dashboard, Screen.Notas, Screen.Copilot, Screen.Profile)
 
     val isSimulador = currentDestination?.route == Screen.Simulador.route
 
@@ -107,6 +111,7 @@ fun MainScreen(onLogout: () -> Unit) {
                     when (currentDestination?.route) {
                         Screen.Profile.route -> "Mi Perfil"
                         Screen.Notas.route -> "Notas"
+                        Screen.Copilot.route -> "Copilot AI"
                         else -> "NotiVas"
                     }
                 TopAppBar(
@@ -189,6 +194,10 @@ fun MainScreen(onLogout: () -> Unit) {
                                             if (selected) Icons.Filled.Analytics
                                             else Icons.Outlined.Analytics
 
+                                        Screen.Copilot ->
+                                            if (selected) Icons.Filled.AutoAwesome
+                                            else Icons.Outlined.AutoAwesome
+
                                         Screen.Profile ->
                                             if (selected) Icons.Filled.Person
                                             else Icons.Outlined.Person
@@ -212,6 +221,7 @@ fun MainScreen(onLogout: () -> Unit) {
                                         Screen.Dashboard -> "Inicio"
                                         Screen.Foros -> "Foros"
                                         Screen.Notas -> "Notas"
+                                        Screen.Copilot -> "Copilot"
                                         Screen.Profile -> "Perfil"
                                         else -> "Home"
                                     }
@@ -430,6 +440,25 @@ fun MainScreen(onLogout: () -> Unit) {
                         onLinkItem = viewModel::linkSimulationItemWithCanvas
                     )
                 }
+            }
+            composable(Screen.Copilot.route) {
+                val viewModel: CopilotViewModel = hiltViewModel()
+                val uiState by viewModel.uiState.collectAsState()
+
+                CopilotScreen(
+                    uiState = uiState,
+                    onSelectCourse = viewModel::selectCourse,
+                    onInputChange = viewModel::updateInputText,
+                    onSendMessage = { prompt -> viewModel.sendMessage(prompt) },
+                    onClearConversation = viewModel::clearConversation,
+                    onNavigateToProfile = {
+                        navController.navigate(Screen.Profile.route) {
+                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
             composable(Screen.Profile.route) {
                 val viewModel: ProfileViewModel = hiltViewModel()
