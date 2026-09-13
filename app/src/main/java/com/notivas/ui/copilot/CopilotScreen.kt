@@ -100,14 +100,13 @@ fun CopilotScreen(
             }
         }
 
-        // Docked input bar (sits flush against the navbar, with imePadding)
+        // Docked input bar (sits flush against the bottom, handled by parent Scaffold insets)
         CopilotInputBar(
             inputText = uiState.inputText,
             isLoading = uiState.isLoading,
             enabled = uiState.hasApiKey && uiState.isCopilotEnabled,
             onInputChange = onInputChange,
-            onSend = { onSendMessage(null) },
-            modifier = Modifier.imePadding()
+            onSend = { onSendMessage(null) }
         )
     }
 }

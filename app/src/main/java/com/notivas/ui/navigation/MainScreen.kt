@@ -17,6 +17,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -273,7 +274,9 @@ fun MainScreen(onLogout: () -> Unit) {
                 if (isSimulador) {
                     Modifier.fillMaxSize()
                 } else {
-                    Modifier.padding(innerPadding)
+                    Modifier
+                        .padding(innerPadding)
+                        .consumeWindowInsets(innerPadding)
                 },
             enterTransition = {
                 fadeIn(
