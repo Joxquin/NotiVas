@@ -24,7 +24,18 @@ data class CopilotSource(
 data class CopilotResult(
     val reply: String,
     val sources: List<CopilotSource> = emptyList(),
-    val actionFeedback: String? = null
+    val actionFeedback: String? = null,
+    val promptTokens: Int = 0,
+    val completionTokens: Int = 0,
+    val totalTokens: Int = 0
+)
+
+data class OpenRouterAccountBalance(
+    val totalCredits: Double? = null,
+    val totalUsage: Double? = null,
+    val remainingCredits: Double? = null,
+    val isFreeTier: Boolean? = null,
+    val limit: Double? = null
 )
 
 @Singleton
@@ -226,11 +237,26 @@ class CopilotRepository @Inject constructor(
 
             val responseMessage = choice.message
             val toolCalls = responseMessage.toolCalls
+            val firstUsage = chatResponse.usage
 
             // If no tools needed, return answer directly
             if (toolCalls.isNullOrEmpty()) {
                 val content = responseMessage.content ?: "No pude procesar una respuesta."
-                return Result.success(CopilotResult(reply = content))
+                val pTokens = firstUsage?.promptTokens ?: 0
+                val cTokens = firstUsage?.completionTokens ?: 0
+                val tTokens = firstUsage?.totalTokens ?: (pTokens + cTokens)
+
+                // Accumulate to global preferences
+                preferencesManager.addCopilotTokens(tTokens.toLong())
+
+                return Result.success(
+                    CopilotResult(
+                        reply = content,
+                        promptTokens = pTokens,
+                        completionTokens = cTokens,
+                        totalTokens = tTokens
+                    )
+                )
             }
 
             // Execute tools requested by LLM
@@ -762,20 +788,66 @@ class CopilotRepository @Inject constructor(
                 return Result.failure(Exception(formatOpenRouterError(followUpResponse.code(), err)))
             }
 
-            val finalReply = followUpResponse.body()?.choices?.firstOrNull()?.message?.content
+            val followUpBody = followUpResponse.body()
+            val finalReply = followUpBody?.choices?.firstOrNull()?.message?.content
                 ?: "No se obtuvo respuesta final."
+
+            val secondUsage = followUpBody?.usage
+            val firstUsageTokens = firstUsage?.totalTokens ?: 0
+            val pTokens = (firstUsage?.promptTokens ?: 0) + (secondUsage?.promptTokens ?: 0)
+            val cTokens = (firstUsage?.completionTokens ?: 0) + (secondUsage?.completionTokens ?: 0)
+            val totalTokensCombined = firstUsageTokens + (secondUsage?.totalTokens ?: (pTokens + cTokens))
+
+            // Accumulate to global preferences
+            preferencesManager.addCopilotTokens(totalTokensCombined.toLong())
 
             return Result.success(
                 CopilotResult(
                     reply = finalReply,
                     sources = sourcesConsulted,
-                    actionFeedback = actionFeedback
+                    actionFeedback = actionFeedback,
+                    promptTokens = pTokens,
+                    completionTokens = cTokens,
+                    totalTokens = totalTokensCombined
                 )
             )
 
         } catch (e: Exception) {
             Log.e("CopilotRepository", "Error executing copilot request", e)
             return Result.failure(e)
+        }
+    }
+
+    suspend fun getOpenRouterBalance(): OpenRouterAccountBalance? {
+        val apiKey = preferencesManager.openRouterApiKey.first() ?: return null
+        if (apiKey.isBlank()) return null
+        val authHeader = if (apiKey.startsWith("Bearer ")) apiKey else "Bearer $apiKey"
+
+        return try {
+            val creditsResponse = openRouterApiService.getCredits(authHeader)
+            val keyResponse = openRouterApiService.getKeyInfo(authHeader)
+
+            val creditsData = if (creditsResponse.isSuccessful) creditsResponse.body()?.data else null
+            val keyData = if (keyResponse.isSuccessful) keyResponse.body()?.data else null
+
+            val totalCredits = creditsData?.totalCredits
+            val totalUsage = creditsData?.totalUsage ?: keyData?.usage
+            val remaining = if (totalCredits != null && totalUsage != null) {
+                (totalCredits - totalUsage).coerceAtLeast(0.0)
+            } else if (keyData?.limit != null && keyData.usage != null) {
+                (keyData.limit - keyData.usage).coerceAtLeast(0.0)
+            } else null
+
+            OpenRouterAccountBalance(
+                totalCredits = totalCredits,
+                totalUsage = totalUsage,
+                remainingCredits = remaining,
+                isFreeTier = keyData?.isFreeTier,
+                limit = keyData?.limit
+            )
+        } catch (e: Exception) {
+            Log.e("CopilotRepository", "Error fetching OpenRouter balance", e)
+            null
         }
     }
 

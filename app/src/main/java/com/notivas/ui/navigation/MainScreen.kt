@@ -497,6 +497,7 @@ fun MainScreen(onLogout: () -> Unit) {
                     onOpenRouterApiKeyChange = viewModel::setOpenRouterApiKey,
                     onOpenRouterModelChange = viewModel::setOpenRouterModel,
                     onCopilotEnabledChange = viewModel::setCopilotEnabled,
+                    onRefreshOpenRouterBalance = viewModel::refreshOpenRouterBalance,
                     onLogout = viewModel::logout
                 )
             }

@@ -36,6 +36,7 @@ class PreferencesManager @Inject constructor(
         val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
         val OPENROUTER_MODEL = stringPreferencesKey("openrouter_model")
         val COPILOT_ENABLED = booleanPreferencesKey("copilot_enabled")
+        val TOTAL_COPILOT_TOKENS = longPreferencesKey("total_copilot_tokens")
     }
 
     val universityUrl: Flow<String?> = context.dataStore.data.map { it[UNIVERSITY_URL] }
@@ -50,6 +51,15 @@ class PreferencesManager @Inject constructor(
     val openRouterApiKey: Flow<String?> = context.dataStore.data.map { it[OPENROUTER_API_KEY] }
     val openRouterModel: Flow<String> = context.dataStore.data.map { it[OPENROUTER_MODEL] ?: "google/gemini-2.5-flash" }
     val copilotEnabled: Flow<Boolean> = context.dataStore.data.map { it[COPILOT_ENABLED] ?: false }
+    val totalCopilotTokens: Flow<Long> = context.dataStore.data.map { it[TOTAL_COPILOT_TOKENS] ?: 0L }
+
+    suspend fun addCopilotTokens(tokens: Long) {
+        if (tokens <= 0) return
+        context.dataStore.edit {
+            val current = it[TOTAL_COPILOT_TOKENS] ?: 0L
+            it[TOTAL_COPILOT_TOKENS] = current + tokens
+        }
+    }
 
     suspend fun saveUniversityUrl(url: String) {
         context.dataStore.edit { it[UNIVERSITY_URL] = url }

@@ -25,18 +25,37 @@ data class ProfileUiState(
     val biometricLock: Boolean = true,
     val openRouterApiKey: String? = null,
     val openRouterModel: String = "google/gemini-2.5-flash",
-    val copilotEnabled: Boolean = false
+    val copilotEnabled: Boolean = false,
+    val totalCopilotTokens: Long = 0L,
+    val openRouterBalance: com.notivas.data.repository.OpenRouterAccountBalance? = null,
+    val isLoadingBalance: Boolean = false
 )
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val repository: CanvasRepository,
+    private val copilotRepository: com.notivas.data.repository.CopilotRepository,
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
     private val _profile = MutableStateFlow<UserProfile?>(null)
     private val _isLoggedOut = MutableStateFlow(false)
     val isLoggedOut: StateFlow<Boolean> = _isLoggedOut.asStateFlow()
+    private val _openRouterBalance = MutableStateFlow<com.notivas.data.repository.OpenRouterAccountBalance?>(null)
+    private val _isLoadingBalance = MutableStateFlow(false)
+
+    init {
+        fetchProfile()
+        refreshOpenRouterBalance()
+    }
+
+    fun refreshOpenRouterBalance() {
+        viewModelScope.launch {
+            _isLoadingBalance.value = true
+            _openRouterBalance.value = copilotRepository.getOpenRouterBalance()
+            _isLoadingBalance.value = false
+        }
+    }
 
     val uiState: StateFlow<ProfileUiState> = combine(
         combine(
@@ -56,8 +75,15 @@ class ProfileViewModel @Inject constructor(
             preferencesManager.copilotEnabled
         ) { sync, bio, key, model, copilot ->
             Tuple5(sync, bio, key, model, copilot)
+        },
+        combine(
+            preferencesManager.totalCopilotTokens,
+            _openRouterBalance,
+            _isLoadingBalance
+        ) { totalTokens, balance, loadingBalance ->
+            Triple(totalTokens, balance, loadingBalance)
         }
-    ) { (p, u, n24, n3, n30), (sync, bio, key, model, copilot) ->
+    ) { (p, u, n24, n3, n30), (sync, bio, key, model, copilot), (totalTokens, balance, loadingBalance) ->
         val host = u?.let {
             it.removePrefix("https://").removePrefix("http://").trimEnd('/')
         } ?: "Canvas LMS"
@@ -72,7 +98,10 @@ class ProfileViewModel @Inject constructor(
             biometricLock = bio,
             openRouterApiKey = key,
             openRouterModel = model,
-            copilotEnabled = copilot
+            copilotEnabled = copilot,
+            totalCopilotTokens = totalTokens,
+            openRouterBalance = balance,
+            isLoadingBalance = loadingBalance
         )
     }.stateIn(
         scope = viewModelScope,
@@ -82,9 +111,6 @@ class ProfileViewModel @Inject constructor(
 
     private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 
-    init {
-        fetchProfile()
-    }
 
     private fun fetchProfile() {
         viewModelScope.launch {
@@ -129,6 +155,7 @@ class ProfileViewModel @Inject constructor(
     fun setOpenRouterApiKey(apiKey: String?) {
         viewModelScope.launch {
             preferencesManager.setOpenRouterApiKey(apiKey)
+            refreshOpenRouterBalance()
         }
     }
 

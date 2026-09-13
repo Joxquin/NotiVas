@@ -58,7 +58,11 @@ data class CopilotUiState(
     // Chat sessions and history
     val currentSessionId: String? = null,
     val savedSessions: List<CopilotSession> = emptyList(),
-    val showHistorySheet: Boolean = false
+    val showHistorySheet: Boolean = false,
+    // Token & Credit stats
+    val sessionTokens: Int = 0,
+    val totalAccountTokens: Long = 0L,
+    val openRouterBalance: com.notivas.data.repository.OpenRouterAccountBalance? = null
 )
 
 @HiltViewModel
@@ -76,6 +80,8 @@ class CopilotViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     private val _currentSessionId = MutableStateFlow<String?>(null)
     private val _showHistorySheet = MutableStateFlow(false)
+    private val _sessionTokens = MutableStateFlow(0)
+    private val _openRouterBalance = MutableStateFlow<com.notivas.data.repository.OpenRouterAccountBalance?>(null)
 
     // @ Mention State
     private val _showMentionMenu = MutableStateFlow(false)
@@ -85,6 +91,16 @@ class CopilotViewModel @Inject constructor(
     private val _courseAssignments = MutableStateFlow<List<Assignment>>(emptyList())
     private val _coursePlannerItems = MutableStateFlow<List<PlannerItem>>(emptyList())
     private val _courseModules = MutableStateFlow<List<CanvasModule>>(emptyList())
+
+    init {
+        refreshOpenRouterBalance()
+    }
+
+    fun refreshOpenRouterBalance() {
+        viewModelScope.launch {
+            _openRouterBalance.value = copilotRepository.getOpenRouterBalance()
+        }
+    }
 
     val uiState: StateFlow<CopilotUiState> = combine(
         combine(
@@ -120,17 +136,30 @@ class CopilotViewModel @Inject constructor(
             ) { assignments, plannerItems, modules ->
                 Triple(assignments, plannerItems, modules)
             },
-            _currentSessionId,
-            copilotChatRepository.allSessions,
-            _showHistorySheet
-        ) { (assignments, plannerItems, modules), currentSessionId, savedSessions, showHistory ->
-            Tuple4(Triple(assignments, plannerItems, modules), currentSessionId, savedSessions, showHistory)
+            combine(
+                _currentSessionId,
+                copilotChatRepository.allSessions,
+                _showHistorySheet
+            ) { currentSessionId, savedSessions, showHistory ->
+                Triple(currentSessionId, savedSessions, showHistory)
+            },
+            combine(
+                _sessionTokens,
+                preferencesManager.totalCopilotTokens,
+                _openRouterBalance
+            ) { sTokens, tTokens, balance ->
+                Triple(sTokens, tTokens, balance)
+            }
+        ) { resources, sessionInfo, tokenInfo ->
+            Triple(resources, sessionInfo, tokenInfo)
         }
     ) { (courses, selectedCourseId, messages, isLoading, inputText),
         (enabled, hasApiKey, model, error),
         (showMenu, step, query, activeCourse),
-        (resources, currentSessionId, savedSessions, showHistory) ->
+        (resources, sessionInfo, tokenInfo) ->
         val (assignments, plannerItems, modules) = resources
+        val (currentSessionId, savedSessions, showHistory) = sessionInfo
+        val (sessionTokens, totalTokens, balance) = tokenInfo
         CopilotUiState(
             courses = courses,
             selectedCourseId = selectedCourseId,
@@ -150,7 +179,10 @@ class CopilotViewModel @Inject constructor(
             courseModules = modules,
             currentSessionId = currentSessionId,
             savedSessions = savedSessions,
-            showHistorySheet = showHistory
+            showHistorySheet = showHistory,
+            sessionTokens = sessionTokens,
+            totalAccountTokens = totalTokens,
+            openRouterBalance = balance
         )
     }.stateIn(
         scope = viewModelScope,
@@ -169,6 +201,7 @@ class CopilotViewModel @Inject constructor(
     fun startNewChat() {
         _currentSessionId.value = null
         _messages.value = emptyList()
+        _sessionTokens.value = 0
         _inputText.value = ""
         _errorMessage.value = null
         _showHistorySheet.value = false
@@ -181,6 +214,8 @@ class CopilotViewModel @Inject constructor(
             _currentSessionId.value = sessionId
             _selectedCourseId.value = session?.courseId
             _messages.value = messages
+            // Approximation or reset of session tokens for historical chat
+            _sessionTokens.value = 0
             _showHistorySheet.value = false
         }
     }
@@ -368,7 +403,9 @@ class CopilotViewModel @Inject constructor(
                         actionFeedback = response.actionFeedback
                     )
                     _messages.value = _messages.value + assistantMessage
+                    _sessionTokens.value += response.totalTokens
                     copilotChatRepository.saveMessage(sessionId, assistantMessage)
+                    refreshOpenRouterBalance()
                 },
                 onFailure = { error ->
                     val errorText = error.message ?: "Ocurrió un error inesperado."

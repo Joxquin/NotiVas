@@ -75,3 +75,24 @@ data class OpenRouterError(
     @SerializedName("code") val code: Any? = null,
     @SerializedName("message") val message: String? = null
 )
+
+data class OpenRouterCreditsResponse(
+    @SerializedName("data") val data: OpenRouterCreditsData? = null
+)
+
+data class OpenRouterCreditsData(
+    @SerializedName("total_credits") val totalCredits: Double? = null,
+    @SerializedName("total_usage") val totalUsage: Double? = null
+)
+
+data class OpenRouterKeyResponse(
+    @SerializedName("data") val data: OpenRouterKeyData? = null
+)
+
+data class OpenRouterKeyData(
+    @SerializedName("label") val label: String? = null,
+    @SerializedName("usage") val usage: Double? = null,
+    @SerializedName("limit") val limit: Double? = null,
+    @SerializedName("is_free_tier") val isFreeTier: Boolean? = null
+)
+

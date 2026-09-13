@@ -16,9 +16,11 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Token
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -35,7 +37,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.notivas.data.repository.OpenRouterAccountBalance
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -49,6 +53,7 @@ fun ProfileScreen(
     onOpenRouterApiKeyChange: (String?) -> Unit = {},
     onOpenRouterModelChange: (String) -> Unit = {},
     onCopilotEnabledChange: (Boolean) -> Unit = {},
+    onRefreshOpenRouterBalance: () -> Unit = {},
     lazyListState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     onLogout: () -> Unit
 ) {
@@ -134,9 +139,13 @@ fun ProfileScreen(
                 enabled = uiState.copilotEnabled,
                 apiKey = uiState.openRouterApiKey,
                 selectedModel = uiState.openRouterModel,
+                totalTokens = uiState.totalCopilotTokens,
+                balance = uiState.openRouterBalance,
+                isLoadingBalance = uiState.isLoadingBalance,
                 onEnabledChange = onCopilotEnabledChange,
                 onApiKeyChange = onOpenRouterApiKeyChange,
-                onModelChange = onOpenRouterModelChange
+                onModelChange = onOpenRouterModelChange,
+                onRefreshBalance = onRefreshOpenRouterBalance
             )
         }
 
@@ -847,9 +856,13 @@ private fun CopilotSettingsSection(
     enabled: Boolean,
     apiKey: String?,
     selectedModel: String,
+    totalTokens: Long,
+    balance: OpenRouterAccountBalance?,
+    isLoadingBalance: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onApiKeyChange: (String?) -> Unit,
-    onModelChange: (String) -> Unit
+    onModelChange: (String) -> Unit,
+    onRefreshBalance: () -> Unit
 ) {
     var showApiKeyDialog by remember { mutableStateOf(false) }
     var showModelDialog by remember { mutableStateOf(false) }
@@ -1101,6 +1114,128 @@ private fun CopilotSettingsSection(
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
+                }
+            }
+
+            // OpenRouter Balance & Token Usage Stats
+            if (!apiKey.isNullOrBlank()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Consumo y Créditos",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            IconButton(
+                                onClick = onRefreshBalance,
+                                modifier = Modifier.size(28.dp),
+                                enabled = !isLoadingBalance
+                            ) {
+                                if (isLoadingBalance) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Actualizar saldo",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Saldo / Créditos Restantes
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(
+                                        text = "Saldo restante",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    val balanceStr = when {
+                                        balance == null && isLoadingBalance -> "Consultando..."
+                                        balance == null -> "No disponible"
+                                        balance.isFreeTier == true -> "Tier Gratis"
+                                        balance.remainingCredits != null -> {
+                                            val rem = balance.remainingCredits
+                                            if (rem < 0.01) {
+                                                String.format(java.util.Locale.US, "$%.4f", rem)
+                                            } else {
+                                                String.format(java.util.Locale.US, "$%.2f", rem)
+                                            }
+                                        }
+                                        else -> "Activo"
+                                    }
+                                    Text(
+                                        text = balanceStr,
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = if (balance?.isFreeTier == true) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            // Tokens Totales Acumulados
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(
+                                        text = "Tokens totales",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = if (totalTokens >= 1_000_000) {
+                                            String.format(java.util.Locale.US, "%.1fM", totalTokens / 1_000_000.0)
+                                        } else if (totalTokens >= 1_000) {
+                                            String.format(java.util.Locale.US, "%.1fk", totalTokens / 1_000.0)
+                                        } else {
+                                            "$totalTokens"
+                                        },
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

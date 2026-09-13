@@ -140,6 +140,71 @@ fun CopilotScreen(
                 }
             }
 
+            // Center: Session tokens and/or balance pill
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (uiState.sessionTokens > 0) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                modifier = Modifier.size(11.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "${uiState.sessionTokens} tks",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                uiState.openRouterBalance?.let { balance ->
+                    val balanceText = when {
+                        balance.isFreeTier == true -> "Free Tier"
+                        balance.remainingCredits != null -> {
+                            val rem = balance.remainingCredits
+                            if (rem < 0.01) {
+                                String.format(java.util.Locale.US, "$%.4f", rem)
+                            } else {
+                                String.format(java.util.Locale.US, "$%.2f", rem)
+                            }
+                        }
+                        else -> null
+                    }
+                    if (balanceText != null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                        ) {
+                            Text(
+                                text = balanceText,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             // Right side buttons: Nuevo chat / Limpiar
             Row(
                 verticalAlignment = Alignment.CenterVertically,
