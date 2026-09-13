@@ -12,6 +12,9 @@ interface PlannerItemDao {
     @Query("SELECT * FROM planner_items ORDER BY plannableDate ASC")
     fun getAllPlannerItems(): Flow<List<PlannerItem>>
 
+    @Query("SELECT * FROM planner_items WHERE courseId = :courseId ORDER BY plannableDate ASC")
+    fun getPlannerItemsByCourse(courseId: Long): Flow<List<PlannerItem>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlannerItems(items: List<PlannerItem>)
 

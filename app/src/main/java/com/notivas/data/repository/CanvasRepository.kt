@@ -43,6 +43,12 @@ constructor(
     val allPlannerItems: Flow<List<PlannerItem>> = plannerItemDao.getAllPlannerItems()
     val universityUrl: Flow<String?> = preferencesManager.universityUrl
 
+    fun getAssignmentsForCourse(courseId: Long): Flow<List<Assignment>> =
+        assignmentDao.getAssignmentsByCourse(courseId)
+
+    fun getPlannerItemsForCourse(courseId: Long): Flow<List<PlannerItem>> =
+        plannerItemDao.getPlannerItemsByCourse(courseId)
+
     fun getSimulationGroupsWithItems(courseId: Long): Flow<List<com.notivas.data.model.SimulationGroupWithItems>> =
         simulationDao.getGroupsWithItemsByCourse(courseId)
 

@@ -455,7 +455,6 @@ fun MainScreen(onLogout: () -> Unit) {
 
                 CopilotScreen(
                     uiState = uiState,
-                    onSelectCourse = viewModel::selectCourse,
                     onInputChange = viewModel::updateInputText,
                     onSendMessage = { prompt -> viewModel.sendMessage(prompt) },
                     onClearConversation = viewModel::clearConversation,
@@ -465,7 +464,13 @@ fun MainScreen(onLogout: () -> Unit) {
                             launchSingleTop = true
                             restoreState = true
                         }
-                    }
+                    },
+                    onTriggerAtMention = viewModel::triggerAtMention,
+                    onSelectMentionCourse = viewModel::selectMentionCourse,
+                    onApplyCourseMention = viewModel::applyCourseMention,
+                    onApplyResourceMention = viewModel::applyResourceMention,
+                    onBackToCourseSelection = viewModel::backToCourseSelection,
+                    onDismissMentionMenu = viewModel::dismissMentionMenu
                 )
             }
             composable(Screen.Profile.route) {

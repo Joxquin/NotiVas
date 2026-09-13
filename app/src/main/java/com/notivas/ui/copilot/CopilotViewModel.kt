@@ -3,7 +3,9 @@ package com.notivas.ui.copilot
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notivas.data.local.prefs.PreferencesManager
+import com.notivas.data.model.Assignment
 import com.notivas.data.model.Course
+import com.notivas.data.model.PlannerItem
 import com.notivas.data.remote.openrouter.OpenRouterMessage
 import com.notivas.data.repository.CanvasRepository
 import com.notivas.data.repository.CopilotRepository
@@ -16,6 +18,11 @@ import javax.inject.Inject
 
 enum class CopilotRole {
     USER, ASSISTANT
+}
+
+enum class MentionStep {
+    COURSES,
+    COURSE_RESOURCES
 }
 
 data class CopilotMessageItem(
@@ -36,7 +43,14 @@ data class CopilotUiState(
     val hasApiKey: Boolean = false,
     val currentModel: String = "google/gemini-2.5-flash",
     val inputText: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    // Interactive @ mention state
+    val showMentionMenu: Boolean = false,
+    val mentionStep: MentionStep = MentionStep.COURSES,
+    val mentionQuery: String = "",
+    val activeMentionCourse: Course? = null,
+    val courseAssignments: List<Assignment> = emptyList(),
+    val coursePlannerItems: List<PlannerItem> = emptyList()
 )
 
 @HiltViewModel
@@ -52,15 +66,24 @@ class CopilotViewModel @Inject constructor(
     private val _inputText = MutableStateFlow("")
     private val _errorMessage = MutableStateFlow<String?>(null)
 
+    // @ Mention State
+    private val _showMentionMenu = MutableStateFlow(false)
+    private val _mentionStep = MutableStateFlow(MentionStep.COURSES)
+    private val _mentionQuery = MutableStateFlow("")
+    private val _activeMentionCourse = MutableStateFlow<Course?>(null)
+    private val _courseAssignments = MutableStateFlow<List<Assignment>>(emptyList())
+    private val _coursePlannerItems = MutableStateFlow<List<PlannerItem>>(emptyList())
+
     val uiState: StateFlow<CopilotUiState> = combine(
-        canvasRepository.allCourses,
-        _selectedCourseId,
-        _messages,
-        _isLoading,
-        _inputText
-    ) { courses, selectedCourseId, messages, isLoading, inputText ->
-        Tuple5(courses, selectedCourseId, messages, isLoading, inputText)
-    }.combine(
+        combine(
+            canvasRepository.allCourses,
+            _selectedCourseId,
+            _messages,
+            _isLoading,
+            _inputText
+        ) { courses, selectedCourseId, messages, isLoading, inputText ->
+            Tuple5(courses, selectedCourseId, messages, isLoading, inputText)
+        },
         combine(
             preferencesManager.copilotEnabled,
             preferencesManager.openRouterApiKey,
@@ -68,9 +91,25 @@ class CopilotViewModel @Inject constructor(
             _errorMessage
         ) { enabled, apiKey, model, error ->
             Tuple4(enabled, !apiKey.isNullOrBlank(), model, error)
+        },
+        combine(
+            _showMentionMenu,
+            _mentionStep,
+            _mentionQuery,
+            _activeMentionCourse
+        ) { showMenu, step, query, activeCourse ->
+            Tuple4(showMenu, step, query, activeCourse)
+        },
+        combine(
+            _courseAssignments,
+            _coursePlannerItems
+        ) { assignments, plannerItems ->
+            Pair(assignments, plannerItems)
         }
     ) { (courses, selectedCourseId, messages, isLoading, inputText),
-        (enabled, hasApiKey, model, error) ->
+        (enabled, hasApiKey, model, error),
+        (showMenu, step, query, activeCourse),
+        (assignments, plannerItems) ->
         CopilotUiState(
             courses = courses,
             selectedCourseId = selectedCourseId,
@@ -80,7 +119,13 @@ class CopilotViewModel @Inject constructor(
             hasApiKey = hasApiKey,
             currentModel = model,
             inputText = inputText,
-            errorMessage = error
+            errorMessage = error,
+            showMentionMenu = showMenu,
+            mentionStep = step,
+            mentionQuery = query,
+            activeMentionCourse = activeCourse,
+            courseAssignments = assignments,
+            coursePlannerItems = plannerItems
         )
     }.stateIn(
         scope = viewModelScope,
@@ -94,6 +139,90 @@ class CopilotViewModel @Inject constructor(
 
     fun updateInputText(text: String) {
         _inputText.value = text
+
+        // Check if cursor/last text ends with an '@' symbol or partial mention token
+        val lastAtIndex = text.lastIndexOf('@')
+        if (lastAtIndex != -1) {
+            val afterAt = text.substring(lastAtIndex + 1)
+            // If after '@' there is no space, user is actively typing a mention
+            if (!afterAt.contains(' ')) {
+                _mentionQuery.value = afterAt
+                if (!_showMentionMenu.value) {
+                    _showMentionMenu.value = true
+                    _mentionStep.value = MentionStep.COURSES
+                }
+            } else {
+                // If there is a space after @, close popup unless in resource step
+                if (_mentionStep.value == MentionStep.COURSES) {
+                    _showMentionMenu.value = false
+                }
+            }
+        } else {
+            _showMentionMenu.value = false
+            _activeMentionCourse.value = null
+        }
+    }
+
+    fun triggerAtMention() {
+        val currentText = _inputText.value
+        val newText = if (currentText.isEmpty() || currentText.endsWith(" ")) {
+            "$currentText@"
+        } else {
+            "$currentText @"
+        }
+        _inputText.value = newText
+        _mentionQuery.value = ""
+        _mentionStep.value = MentionStep.COURSES
+        _showMentionMenu.value = true
+    }
+
+    fun selectMentionCourse(course: Course) {
+        _activeMentionCourse.value = course
+        _selectedCourseId.value = course.id
+        _mentionStep.value = MentionStep.COURSE_RESOURCES
+
+        // Load assignments & planner items for this course
+        viewModelScope.launch {
+            canvasRepository.getAssignmentsForCourse(course.id).firstOrNull()?.let {
+                _courseAssignments.value = it
+            }
+            canvasRepository.getPlannerItemsForCourse(course.id).firstOrNull()?.let {
+                _coursePlannerItems.value = it
+            }
+        }
+    }
+
+    fun backToCourseSelection() {
+        _mentionStep.value = MentionStep.COURSES
+        _activeMentionCourse.value = null
+    }
+
+    fun applyCourseMention(course: Course) {
+        val currentText = _inputText.value
+        val lastAtIndex = currentText.lastIndexOf('@')
+        val prefix = if (lastAtIndex != -1) currentText.substring(0, lastAtIndex) else currentText
+        val tag = "@[${course.courseCode ?: course.name}] "
+        _inputText.value = prefix + tag
+        _selectedCourseId.value = course.id
+        dismissMentionMenu()
+    }
+
+    fun applyResourceMention(course: Course, resourceName: String) {
+        val currentText = _inputText.value
+        val lastAtIndex = currentText.lastIndexOf('@')
+        val prefix = if (lastAtIndex != -1) currentText.substring(0, lastAtIndex) else currentText
+        val courseLabel = course.courseCode ?: course.name
+        val tag = "@[$courseLabel > $resourceName] "
+        _inputText.value = prefix + tag
+        _selectedCourseId.value = course.id
+        dismissMentionMenu()
+    }
+
+    fun dismissMentionMenu() {
+        _showMentionMenu.value = false
+        _mentionStep.value = MentionStep.COURSES
+        _activeMentionCourse.value = null
+        _mentionQuery.value = ""
     }
 
     fun clearError() {
@@ -107,6 +236,8 @@ class CopilotViewModel @Inject constructor(
     fun sendMessage(customPrompt: String? = null) {
         val prompt = (customPrompt ?: _inputText.value).trim()
         if (prompt.isBlank() || _isLoading.value) return
+
+        dismissMentionMenu()
 
         val userMessage = CopilotMessageItem(
             role = CopilotRole.USER,
@@ -162,4 +293,5 @@ class CopilotViewModel @Inject constructor(
 
     private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
     private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
+    private data class Tuple6<A, B, C, D, E, F>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F)
 }

@@ -14,6 +14,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -42,11 +44,16 @@ import com.notivas.data.repository.CopilotSource
 @Composable
 fun CopilotScreen(
     uiState: CopilotUiState,
-    onSelectCourse: (Long?) -> Unit,
     onInputChange: (String) -> Unit,
     onSendMessage: (String?) -> Unit,
     onClearConversation: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onTriggerAtMention: () -> Unit,
+    onSelectMentionCourse: (com.notivas.data.model.Course) -> Unit,
+    onApplyCourseMention: (com.notivas.data.model.Course) -> Unit,
+    onApplyResourceMention: (com.notivas.data.model.Course, String) -> Unit,
+    onBackToCourseSelection: () -> Unit,
+    onDismissMentionMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -64,14 +71,34 @@ fun CopilotScreen(
             .background(MaterialTheme.colorScheme.background)
             .imePadding()
     ) {
-        // Course Filter Chips Carousel (compact, directly below TopAppBar)
-        CourseFilterSelector(
-            courses = uiState.courses,
-            selectedCourseId = uiState.selectedCourseId,
-            onSelectCourse = onSelectCourse,
-            onClearChat = onClearConversation,
-            hasMessages = uiState.messages.isNotEmpty()
-        )
+        // Discreet top header action bar (only if there are messages, with clear conversation button)
+        if (uiState.messages.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onClearConversation,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CleaningServices,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Limpiar chat",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
 
         // Setup Warning Banner (if API Key missing or copilot disabled)
         if (!uiState.hasApiKey || !uiState.isCopilotEnabled) {
@@ -111,91 +138,31 @@ fun CopilotScreen(
             }
         }
 
-        // Docked input bar (sits flush against the bottom, handled by parent Scaffold insets)
+        // Contextual @ Mention Popup (floating directly above the input bar)
+        AnimatedVisibility(
+            visible = uiState.showMentionMenu,
+            enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut()
+        ) {
+            CopilotMentionPopup(
+                uiState = uiState,
+                onSelectCourse = onSelectMentionCourse,
+                onApplyCourse = onApplyCourseMention,
+                onApplyResource = onApplyResourceMention,
+                onBack = onBackToCourseSelection,
+                onDismiss = onDismissMentionMenu
+            )
+        }
+
+        // Docked input bar with '@' trigger button
         CopilotInputBar(
             inputText = uiState.inputText,
             isLoading = uiState.isLoading,
             enabled = uiState.hasApiKey && uiState.isCopilotEnabled,
             onInputChange = onInputChange,
-            onSend = { onSendMessage(null) }
+            onSend = { onSendMessage(null) },
+            onTriggerMention = onTriggerAtMention
         )
-    }
-}
-
-@Composable
-private fun CourseFilterSelector(
-    courses: List<com.notivas.data.model.Course>,
-    selectedCourseId: Long?,
-    onSelectCourse: (Long?) -> Unit,
-    onClearChat: () -> Unit,
-    hasMessages: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        LazyRow(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            item {
-                FilterChip(
-                    selected = selectedCourseId == null,
-                    onClick = { onSelectCourse(null) },
-                    label = { Text("Todos los cursos") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.School,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                )
-            }
-
-            items(courses, key = { it.id }) { course ->
-                val isSelected = selectedCourseId == course.id
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onSelectCourse(if (isSelected) null else course.id) },
-                    label = {
-                        Text(
-                            text = course.courseCode ?: course.name,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                )
-            }
-        }
-
-        if (hasMessages) {
-            IconButton(
-                onClick = onClearChat,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CleaningServices,
-                    contentDescription = "Limpiar conversación",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
     }
 }
 
@@ -755,6 +722,7 @@ private fun CopilotInputBar(
     enabled: Boolean,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
+    onTriggerMention: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -765,7 +733,7 @@ private fun CopilotInputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -778,33 +746,61 @@ private fun CopilotInputBar(
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                 )
             ) {
-                TextField(
-                    value = inputText,
-                    onValueChange = onInputChange,
-                    placeholder = {
-                        Text(
-                            text = if (enabled)
-                                "Pregunta sobre tus tareas o notas..."
-                            else
-                                "Configura tu API Key en Perfil para consultar...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        disabledContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    ),
-                    singleLine = false,
-                    maxLines = 4,
-                    enabled = enabled && !isLoading
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 4.dp)
+                ) {
+                    // Quick '@' mention button inside the input capsule
+                    IconButton(
+                        onClick = onTriggerMention,
+                        enabled = enabled && !isLoading,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "@",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    TextField(
+                        value = inputText,
+                        onValueChange = onInputChange,
+                        placeholder = {
+                            Text(
+                                text = if (enabled)
+                                    "Escribe '@' para elegir curso o recurso..."
+                                else
+                                    "Configura tu API Key en Perfil para consultar...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent
+                        ),
+                        singleLine = false,
+                        maxLines = 4,
+                        enabled = enabled && !isLoading
+                    )
+                }
             }
 
             FloatingActionButton(
@@ -934,3 +930,322 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInlineMarkdow
         append(content.substring(lastIndex))
     }
 }
+
+/**
+ * Interactive Contextual @ Mention Popup.
+ * Provides two cascade steps:
+ * 1. COURSES: List of enrolled courses matching query.
+ * 2. COURSE_RESOURCES: Direct access to assignments, forums, and full course query.
+ */
+@Composable
+private fun CopilotMentionPopup(
+    uiState: CopilotUiState,
+    onSelectCourse: (com.notivas.data.model.Course) -> Unit,
+    onApplyCourse: (com.notivas.data.model.Course) -> Unit,
+    onApplyResource: (com.notivas.data.model.Course, String) -> Unit,
+    onBack: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .heightIn(max = 280.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        tonalElevation = 6.dp,
+        shadowElevation = 8.dp
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (uiState.mentionStep == MentionStep.COURSE_RESOURCES && uiState.activeMentionCourse != null) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver a cursos",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = uiState.activeMentionCourse.name,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AlternateEmail,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Mencionar Curso o Recurso",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cerrar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
+
+            // Content based on step
+            if (uiState.mentionStep == MentionStep.COURSES) {
+                val filteredCourses = remember(uiState.courses, uiState.mentionQuery) {
+                    if (uiState.mentionQuery.isBlank()) {
+                        uiState.courses
+                    } else {
+                        uiState.courses.filter {
+                            it.name.contains(uiState.mentionQuery, ignoreCase = true) ||
+                                    (it.courseCode?.contains(uiState.mentionQuery, ignoreCase = true) == true)
+                        }
+                    }
+                }
+
+                if (filteredCourses.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No se encontraron cursos para '${uiState.mentionQuery}'",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        items(filteredCourses, key = { it.id }) { course ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelectCourse(course) }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.School,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = course.name,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (!course.courseCode.isNullOrBlank()) {
+                                        Text(
+                                            text = course.courseCode,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Ver recursos",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // STEP 2: Course Resources (Assignments, Forums, Entire Course)
+                val course = uiState.activeMentionCourse
+                if (course != null) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(bottom = 8.dp)
+                    ) {
+                        // Option 1: Mention entire course
+                        item(key = "entire_course") {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onApplyCourse(course) },
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Consultar todo el curso",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Pregunta general sobre ${course.courseCode ?: course.name}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                            HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                            )
+                        }
+
+                        // Section: Assignments
+                        if (uiState.courseAssignments.isNotEmpty()) {
+                            item(key = "header_assignments") {
+                                Text(
+                                    text = "TAREAS Y LABORATORIOS (${uiState.courseAssignments.size})",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 14.dp, top = 10.dp, bottom = 4.dp)
+                                )
+                            }
+
+                            items(uiState.courseAssignments, key = { "assign_${it.id}" }) { assignment ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onApplyResource(course, assignment.name) }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Assignment,
+                                        contentDescription = null,
+                                        tint = if (assignment.isCompleted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = assignment.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (assignment.pointsPossible != null || assignment.score != null) {
+                                            Text(
+                                                text = if (assignment.score != null)
+                                                    "Nota: ${assignment.score}/${assignment.pointsPossible ?: 20} pts"
+                                                else
+                                                    "Puntos: ${assignment.pointsPossible} pts",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Section: Forums and Discussions
+                        val courseForums = uiState.coursePlannerItems.filter {
+                            it.plannableType == "discussion_topic" ||
+                                    it.plannable.title.contains("FORO", ignoreCase = true) ||
+                                    it.plannable.title.contains("DEBATE", ignoreCase = true)
+                        }
+
+                        if (courseForums.isNotEmpty()) {
+                            item(key = "header_forums") {
+                                Text(
+                                    text = "FOROS Y DEBATES (${courseForums.size})",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(start = 14.dp, top = 10.dp, bottom = 4.dp)
+                                )
+                            }
+
+                            items(courseForums, key = { "forum_${it.plannableId}" }) { forum ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onApplyResource(course, forum.plannable.title) }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Forum,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = forum.plannable.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
