@@ -23,13 +23,18 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.notivas.data.repository.CopilotSource
@@ -518,7 +523,7 @@ private fun CopilotMessageBubble(message: CopilotMessageItem) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     SelectionContainer {
                         Text(
-                            text = message.text,
+                            text = remember(message.text) { formatMarkdown(message.text) },
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 lineHeight = 20.sp
                             ),
@@ -825,5 +830,107 @@ private fun CopilotInputBar(
                 )
             }
         }
+    }
+}
+
+/**
+ * Parses markdown text into an [AnnotatedString] supporting:
+ * - Bullet lists (`* ` or `- `) converted to clean bullet dots (`• `)
+ * - Markdown headers (`#`, `##`, `###`) rendered in bold
+ * - Bold text (`**text**`) rendered with [FontWeight.Bold]
+ * - Inline code (`` `code` ``) rendered with [FontFamily.Monospace]
+ * - Italic text (`*text*`) rendered with [FontStyle.Italic]
+ */
+private fun formatMarkdown(text: String): AnnotatedString {
+    val lines = text.split("\n")
+    return buildAnnotatedString {
+        lines.forEachIndexed { index, line ->
+            var formattedLine = line
+            var isHeader = false
+
+            // Headers
+            if (formattedLine.startsWith("### ")) {
+                formattedLine = formattedLine.removePrefix("### ")
+                isHeader = true
+            } else if (formattedLine.startsWith("## ")) {
+                formattedLine = formattedLine.removePrefix("## ")
+                isHeader = true
+            } else if (formattedLine.startsWith("# ")) {
+                formattedLine = formattedLine.removePrefix("# ")
+                isHeader = true
+            }
+
+            // Bullet points (* or - followed by whitespace)
+            val bulletRegex = Regex("^(\\s*)([*-])\\s+(.*)$")
+            val bulletMatch = bulletRegex.find(formattedLine)
+            val leadingIndent: String
+            val lineContent: String
+            if (bulletMatch != null) {
+                leadingIndent = bulletMatch.groupValues[1]
+                lineContent = bulletMatch.groupValues[3]
+                append("$leadingIndent• ")
+            } else {
+                lineContent = formattedLine
+            }
+
+            if (isHeader) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    appendInlineMarkdown(lineContent)
+                }
+            } else {
+                appendInlineMarkdown(lineContent)
+            }
+
+            if (index < lines.size - 1) {
+                append("\n")
+            }
+        }
+    }
+}
+
+/**
+ * Parses inline formatting: bold (**...**), inline code (`...`), and italic (*...*).
+ */
+private fun androidx.compose.ui.text.AnnotatedString.Builder.appendInlineMarkdown(content: String) {
+    // Regex matching bold (**...**), code (`...`), or italic (*...*)
+    val inlinePattern = Regex("(\\*\\*([^*]+)\\*\\*)|(`([^`]+)`)|(\\*([^*]+)\\*)")
+    var lastIndex = 0
+
+    for (match in inlinePattern.findAll(content)) {
+        // Append text before match
+        if (match.range.first > lastIndex) {
+            append(content.substring(lastIndex, match.range.first))
+        }
+
+        when {
+            // Bold: **text**
+            match.groups[2] != null -> {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(match.groups[2]!!.value)
+                }
+            }
+            // Code: `code`
+            match.groups[4] != null -> {
+                withStyle(
+                    SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        background = Color(0x22888888)
+                    )
+                ) {
+                    append(" ${match.groups[4]!!.value} ")
+                }
+            }
+            // Italic: *text*
+            match.groups[6] != null -> {
+                withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                    append(match.groups[6]!!.value)
+                }
+            }
+        }
+        lastIndex = match.range.last + 1
+    }
+
+    if (lastIndex < content.length) {
+        append(content.substring(lastIndex))
     }
 }
