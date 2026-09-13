@@ -27,6 +27,7 @@ import com.notivas.ui.copilot.CopilotScreen
 import com.notivas.ui.copilot.CopilotViewModel
 import com.notivas.ui.dashboard.DashboardScreen
 import com.notivas.ui.dashboard.DashboardViewModel
+import com.notivas.ui.debug.DebugScreen
 import com.notivas.ui.foros.ForosScreen
 import com.notivas.ui.foros.ForosViewModel
 import com.notivas.ui.notas.NotasScreen
@@ -277,7 +278,25 @@ fun MainNavGraph(
                 onOpenRouterModelChange = viewModel::setOpenRouterModel,
                 onCopilotEnabledChange = viewModel::setCopilotEnabled,
                 onRefreshOpenRouterBalance = viewModel::refreshOpenRouterBalance,
+                onNavigateToDebug = {
+                    navController.navigate(Screen.Debug.route) {
+                        launchSingleTop = true
+                    }
+                },
                 onLogout = viewModel::logout
+            )
+        }
+
+        composable(Screen.Debug.route) {
+            val debugViewModel: com.notivas.ui.debug.DebugViewModel = hiltViewModel()
+            val assignments by debugViewModel.assignments.collectAsState()
+
+            DebugScreen(
+                versionName = "2.1.0",
+                versionCode = 4,
+                architecture = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown",
+                assignments = assignments,
+                onBack = { navController.popBackStack() }
             )
         }
     }

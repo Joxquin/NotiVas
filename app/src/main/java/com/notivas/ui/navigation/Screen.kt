@@ -10,4 +10,5 @@ sealed class Screen(val route: String) {
     object Simulador : Screen("simulador")
     object Copilot : Screen("copilot")
     object Profile : Screen("profile")
+    object Debug : Screen("debug")
 }

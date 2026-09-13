@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.notivas.ui.profile.components.AppInfoFooter
 import com.notivas.ui.profile.components.CopilotSettingsSection
 import com.notivas.ui.profile.components.GranularNotificationsSection
 import com.notivas.ui.profile.components.SecuritySection
@@ -42,6 +43,7 @@ fun ProfileScreen(
     onOpenRouterModelChange: (String) -> Unit = {},
     onCopilotEnabledChange: (Boolean) -> Unit = {},
     onRefreshOpenRouterBalance: () -> Unit = {},
+    onNavigateToDebug: () -> Unit = {},
     lazyListState: LazyListState = rememberLazyListState(),
     onLogout: () -> Unit
 ) {
@@ -141,6 +143,16 @@ fun ProfileScreen(
                 biometricLock = uiState.biometricLock,
                 onBiometricLockChange = onBiometricLockChange,
                 onRequestLogout = { showLogoutDialog = true }
+            )
+        }
+
+        // 5. Pie de página con info de la app (easter egg: 8 toques → debug)
+        item {
+            AppInfoFooter(
+                versionName = "2.1.0",
+                versionCode = 4,
+                architecture = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown",
+                onNavigateToDebug = onNavigateToDebug
             )
         }
     }
