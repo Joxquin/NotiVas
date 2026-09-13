@@ -66,7 +66,8 @@ interface CanvasApiService {
         @Header("Authorization") token: String,
         @Path("courseId") courseId: Long,
         @Path("assignmentId") assignmentId: Long,
-        @Query("include[]") include: List<String> = listOf("rubric", "submission")
+        @Query("include[]") include: List<String> = listOf("rubric", "submission", "submission_comments", "rubric_assessment")
     ): com.notivas.data.model.CanvasAssignmentDetailResponse
 }
+
 

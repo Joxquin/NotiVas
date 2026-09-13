@@ -142,7 +142,11 @@ class CopilotRepository @Inject constructor(
             append("   a) Obtén primero el ID del curso de la lista. ")
             append("   b) Llama a la herramienta 'fetch_canvas_assignment_details' pasando el course_id y el assignment_name (ej: 'Laboratorio 4') o consulta 'get_course_assignments' para ubicarla. ¡NO le pidas el ID al alumno! ")
             append("3. Si obtienes los detalles de la consigna o rúbrica, explica clara y resumidamente: objetivo de la entrega, qué debe presentar el estudiante, criterios de la rúbrica y fecha límite si la tiene. ")
-            append("4. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
+            append("4. Si el estudiante pregunta por qué obtuvo cierta calificación, por qué tuvo X nota (ej: '¿por qué tuve 15 en tal tarea?'): ")
+            append("   a) Consulta 'fetch_canvas_assignment_details' para obtener la entrega del alumno ('student_submission'), los comentarios del docente ('teacher_comments') y la evaluación por rúbrica ('rubric_assessment'). ")
+            append("   b) Cita textualmente la retroalimentación y comentarios que haya dejado el docente. ")
+            append("   c) Compara los puntos obtenidos en cada criterio de la rúbrica ('student_points_obtained' vs 'points') e indica con exactitud en qué criterios perdió puntos o qué comentarios específicos dejó el profesor en cada criterio. ")
+            append("5. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
             append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas.")
         }
 
@@ -265,14 +269,19 @@ class CopilotRepository @Inject constructor(
                             }
                         }
 
-                        // If still not found, check all assignments in DB
+                        // If still not found in specified course, check all assignments across all courses in DB
+                        var resolvedCid = cid
                         if (aid == 0L && !assignmentNameQuery.isNullOrBlank()) {
                             val allAssignments = assignmentDao.getAssignmentList()
                             val matched = allAssignments.find {
                                 it.name.contains(assignmentNameQuery, ignoreCase = true)
+                            } ?: allAssignments.find {
+                                val keywords = assignmentNameQuery.lowercase().split(" ").filter { k -> k.length > 1 }
+                                keywords.isNotEmpty() && keywords.all { kw -> it.name.lowercase().contains(kw) }
                             }
                             if (matched != null) {
                                 aid = matched.id
+                                resolvedCid = matched.courseId
                             }
                         }
 
@@ -281,14 +290,36 @@ class CopilotRepository @Inject constructor(
                             try {
                                 val details = canvasApiService.getAssignmentDetails(
                                     token = "Bearer $canvasToken",
-                                    courseId = cid,
+                                    courseId = resolvedCid,
                                     assignmentId = aid
                                 )
                                 val cleanDesc = details.description?.let { cleanHtml(it) } ?: "Sin descripción"
+                                val sub = details.submission
+                                val submissionComments = sub?.submissionComments?.map { c ->
+                                    mapOf(
+                                        "author" to (c.authorName ?: "Docente"),
+                                        "comment" to (c.comment ?: ""),
+                                        "created_at" to (c.createdAt ?: "")
+                                    )
+                                } ?: emptyList()
+
+                                val rubricAssessments = sub?.rubricAssessment?.map { (criterionId, assessment) ->
+                                    mapOf(
+                                        "criterion_id" to criterionId,
+                                        "points_obtained" to assessment.points,
+                                        "comments" to assessment.comments
+                                    )
+                                } ?: emptyList()
+
+                                val hasCommentsOrScore = (sub?.score != null) || submissionComments.isNotEmpty()
                                 sourcesConsulted.add(
                                     CopilotSource(
                                         title = "Canvas LMS en vivo: ${details.name}",
-                                        detail = "Rúbrica con ${details.rubric?.size ?: 0} criterios evaluativos"
+                                        detail = if (hasCommentsOrScore) {
+                                            "Nota: ${sub?.score ?: "N/A"}/${details.pointsPossible ?: "N/A"} pts con ${submissionComments.size} comentarios del docente"
+                                        } else {
+                                            "Rúbrica con ${details.rubric?.size ?: 0} criterios evaluativos"
+                                        }
                                     )
                                 )
                                 val result = mapOf(
@@ -297,11 +328,28 @@ class CopilotRepository @Inject constructor(
                                     "due_at" to details.dueAt,
                                     "description" to cleanDesc.take(1500),
                                     "points_possible" to details.pointsPossible,
-                                    "rubric" to details.rubric?.map { criterion ->
+                                    "student_submission" to if (sub != null) {
                                         mapOf(
+                                            "score" to sub.score,
+                                            "grade" to sub.grade,
+                                            "workflow_state" to sub.workflowState,
+                                            "submitted_at" to sub.submittedAt,
+                                            "graded_at" to sub.gradedAt,
+                                            "late" to sub.late,
+                                            "missing" to sub.missing,
+                                            "teacher_comments" to submissionComments,
+                                            "rubric_assessment" to rubricAssessments
+                                        )
+                                    } else null,
+                                    "rubric" to details.rubric?.map { criterion ->
+                                        val assessmentForThis = sub?.rubricAssessment?.get(criterion.id)
+                                        mapOf(
+                                            "id" to criterion.id,
                                             "description" to criterion.description,
                                             "long_description" to criterion.longDescription,
                                             "points" to criterion.points,
+                                            "student_points_obtained" to assessmentForThis?.points,
+                                            "teacher_criterion_comment" to assessmentForThis?.comments,
                                             "ratings" to criterion.ratings?.map { r ->
                                                 "${r.description}: ${r.points} pts"
                                             }
@@ -311,13 +359,14 @@ class CopilotRepository @Inject constructor(
                                 gson.toJson(result)
                             } catch (e: Exception) {
                                 // Fallback to local DB if Canvas API call fails
-                                val local = assignmentDao.getAssignmentsForCourseOnce(cid).find { it.id == aid }
+                                val local = assignmentDao.getAssignmentsForCourseOnce(resolvedCid).find { it.id == aid }
+                                    ?: assignmentDao.getAssignmentList().find { it.id == aid }
                                 if (local != null) {
                                     val cleanDesc = local.description?.let { cleanHtml(it) } ?: "Sin descripción detallada"
                                     sourcesConsulted.add(
                                         CopilotSource(
                                             title = "Base local: ${local.name}",
-                                            detail = "Puntaje máximo: ${local.pointsPossible ?: 20} pts"
+                                            detail = "Puntaje: ${local.score ?: "N/A"}/${local.pointsPossible ?: 20} pts"
                                         )
                                     )
                                     gson.toJson(
@@ -327,6 +376,8 @@ class CopilotRepository @Inject constructor(
                                             "due_at" to local.dueAt,
                                             "description" to cleanDesc.take(1500),
                                             "points_possible" to local.pointsPossible,
+                                            "score" to local.score,
+                                            "grade" to local.grade,
                                             "status" to local.status
                                         )
                                     )
@@ -336,7 +387,8 @@ class CopilotRepository @Inject constructor(
                             }
                         } else if (aid != 0L) {
                             // Fallback to local DB without token
-                            val local = assignmentDao.getAssignmentsForCourseOnce(cid).find { it.id == aid }
+                            val local = assignmentDao.getAssignmentsForCourseOnce(resolvedCid).find { it.id == aid }
+                                ?: assignmentDao.getAssignmentList().find { it.id == aid }
                             if (local != null) {
                                 val cleanDesc = local.description?.let { cleanHtml(it) } ?: "Sin descripción"
                                 gson.toJson(
@@ -345,7 +397,9 @@ class CopilotRepository @Inject constructor(
                                         "name" to local.name,
                                         "due_at" to local.dueAt,
                                         "description" to cleanDesc.take(1500),
-                                        "points_possible" to local.pointsPossible
+                                        "points_possible" to local.pointsPossible,
+                                        "score" to local.score,
+                                        "grade" to local.grade
                                     )
                                 )
                             } else {
@@ -353,7 +407,7 @@ class CopilotRepository @Inject constructor(
                             }
                         } else {
                             // Assignment couldn't be found by name: return available assignments in that course so LLM can pick or suggest!
-                            val available = assignmentDao.getAssignmentsForCourseOnce(cid).map {
+                            val available = assignmentDao.getAssignmentsForCourseOnce(resolvedCid).map {
                                 mapOf("id" to it.id, "name" to it.name, "due_at" to it.dueAt)
                             }
                             gson.toJson(
