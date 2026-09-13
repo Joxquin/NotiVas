@@ -194,20 +194,29 @@ constructor(
         scheduleReminders()
     }
 
-    private fun scheduleReminders() {
-        val constraints = Constraints.Builder().build()
+    suspend fun scheduleReminders(customIntervalMinutes: Long? = null) {
+        val interval = customIntervalMinutes ?: preferencesManager.syncIntervalMinutes.first()
+        val effectiveMinutes = maxOf(15L, interval)
+
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+            .build()
 
         val request =
-                PeriodicWorkRequestBuilder<ReminderWorker>(15, TimeUnit.MINUTES)
-                        .setConstraints(constraints)
-                        .build()
+            PeriodicWorkRequestBuilder<ReminderWorker>(effectiveMinutes, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .build()
 
         WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(
-                        "assignment_reminder",
-                        androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-                        request
-                )
+            .enqueueUniquePeriodicWork(
+                "assignment_reminder",
+                androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+                request
+            )
+    }
+
+    suspend fun updateSyncInterval(minutes: Long) {
+        scheduleReminders(customIntervalMinutes = minutes)
     }
 
     suspend fun verifyAndSave(url: String, token: String): Boolean {

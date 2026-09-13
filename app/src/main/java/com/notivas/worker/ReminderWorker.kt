@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.notivas.data.local.prefs.PreferencesManager
 import com.notivas.data.repository.CanvasRepository
+import com.notivas.util.AlarmSchedulerHelper
 import com.notivas.util.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -19,15 +20,32 @@ class ReminderWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: CanvasRepository,
     private val preferencesManager: PreferencesManager,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val alarmSchedulerHelper: AlarmSchedulerHelper
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         return try {
+            // Sincronizar datos con Canvas si el usuario tiene sesión activa
+            val token = preferencesManager.accessToken.first()
+            if (!token.isNullOrBlank()) {
+                try {
+                    repository.fetchAndSaveData()
+                } catch (_: Exception) {
+                    // Si falla la red, continuamos con los datos en caché local
+                }
+            }
+
             val assignments = repository.allAssignments.first()
             val courses = repository.allCourses.first()
             val courseMap = courses.associateBy { it.id }
             val now = ZonedDateTime.now()
+
+            // Asegurar que las alarmas exactas estén programadas
+            assignments.forEach { assignment ->
+                val courseName = courseMap[assignment.courseId]?.name ?: "Curso"
+                alarmSchedulerHelper.scheduleAlarmsForAssignment(assignment, courseName)
+            }
 
             // Read user settings for granular notifications
             val notif24hEnabled = preferencesManager.notif24h.first()

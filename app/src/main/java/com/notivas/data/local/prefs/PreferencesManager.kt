@@ -3,6 +3,7 @@ package com.notivas.data.local.prefs
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,6 +22,7 @@ class PreferencesManager @Inject constructor(
         val UNIVERSITY_URL = stringPreferencesKey("university_url")
         val ACCESS_TOKEN = stringPreferencesKey("access_token")
         val REMINDER_TIME = stringPreferencesKey("reminder_time")
+        val SYNC_INTERVAL_MINUTES = longPreferencesKey("sync_interval_minutes")
 
         // Granular notifications preferences
         val NOTIF_24H = booleanPreferencesKey("notif_24h")
@@ -33,6 +35,7 @@ class PreferencesManager @Inject constructor(
 
     val universityUrl: Flow<String?> = context.dataStore.data.map { it[UNIVERSITY_URL] }
     val accessToken: Flow<String?> = context.dataStore.data.map { it[ACCESS_TOKEN] }
+    val syncIntervalMinutes: Flow<Long> = context.dataStore.data.map { it[SYNC_INTERVAL_MINUTES] ?: 15L }
 
     val notif24h: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_24H] ?: true }
     val notif3h: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_3H] ?: true }
@@ -57,6 +60,10 @@ class PreferencesManager @Inject constructor(
 
     suspend fun setNotif30m(enabled: Boolean) {
         context.dataStore.edit { it[NOTIF_30M] = enabled }
+    }
+
+    suspend fun setSyncIntervalMinutes(minutes: Long) {
+        context.dataStore.edit { it[SYNC_INTERVAL_MINUTES] = minutes }
     }
 
     suspend fun setBiometricLock(enabled: Boolean) {
