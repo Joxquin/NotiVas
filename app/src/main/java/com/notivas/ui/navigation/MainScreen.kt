@@ -17,9 +17,12 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
@@ -71,6 +74,8 @@ fun MainScreen(onLogout: () -> Unit) {
     val items = listOf(Screen.Dashboard, Screen.Notas, Screen.Copilot, Screen.Profile)
 
     val isSimulador = currentDestination?.route == Screen.Simulador.route
+    val density = LocalDensity.current
+    val isImeVisible = WindowInsets.ime.getBottom(density) > 0
 
     val dashboardListState = rememberLazyListState()
     val notasListState = rememberLazyListState()
@@ -146,7 +151,7 @@ fun MainScreen(onLogout: () -> Unit) {
         },
         bottomBar = {
             AnimatedVisibility(
-                visible = !isSimulador,
+                visible = !isSimulador && !isImeVisible,
                 enter = fadeIn(animationSpec = tween(200)) + slideInVertically(animationSpec = tween(250)) { it },
                 exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(animationSpec = tween(200)) { it }
             ) {

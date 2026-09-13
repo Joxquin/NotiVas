@@ -52,6 +52,7 @@ fun CopilotScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .imePadding()
     ) {
         // Course Filter Chips Carousel (compact, directly below TopAppBar)
         CourseFilterSelector(
