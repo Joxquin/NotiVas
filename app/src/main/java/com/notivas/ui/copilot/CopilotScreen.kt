@@ -1242,6 +1242,90 @@ private fun CopilotMentionPopup(
                                 }
                             }
                         }
+
+                        // Section: Modules and Teacher Resources
+                        if (uiState.courseModules.isNotEmpty()) {
+                            item(key = "header_modules") {
+                                Text(
+                                    text = "MÓDULOS Y RECURSOS DEL DOCENTE (${uiState.courseModules.size})",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.padding(start = 14.dp, top = 10.dp, bottom = 4.dp)
+                                )
+                            }
+
+                            uiState.courseModules.forEach { module ->
+                                val moduleItems = module.items ?: emptyList()
+                                item(key = "mod_header_${module.id}") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onApplyResource(course, "Módulo: ${module.name}") }
+                                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Folder,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = module.name,
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+
+                                items(moduleItems, key = { "item_${module.id}_${it.id}" }) { item ->
+                                    val itemIcon = when (item.type.lowercase()) {
+                                        "file" -> Icons.Default.AttachFile
+                                        "page" -> Icons.Default.Description
+                                        "externalurl" -> Icons.Default.Link
+                                        "discussion" -> Icons.Default.Forum
+                                        "assignment" -> Icons.AutoMirrored.Filled.Assignment
+                                        else -> Icons.Default.Description
+                                    }
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onApplyResource(course, "${module.name}: ${item.title}") }
+                                            .padding(start = 32.dp, end = 14.dp, top = 5.dp, bottom = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = itemIcon,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = item.title,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${item.type} • ${module.name}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -68,6 +68,15 @@ interface CanvasApiService {
         @Path("assignmentId") assignmentId: Long,
         @Query("include[]") include: List<String> = listOf("rubric", "submission", "submission_comments", "rubric_assessment")
     ): com.notivas.data.model.CanvasAssignmentDetailResponse
+
+    @GET("api/v1/courses/{courseId}/modules")
+    suspend fun getModulesWithItems(
+        @Header("Authorization") token: String,
+        @Path("courseId") courseId: Long,
+        @Query("include[]") include: List<String> = listOf("items"),
+        @Query("per_page") perPage: Int = 50
+    ): List<com.notivas.data.model.CanvasModule>
 }
+
 
 

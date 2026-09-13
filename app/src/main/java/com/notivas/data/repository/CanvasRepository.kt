@@ -49,6 +49,16 @@ constructor(
     fun getPlannerItemsForCourse(courseId: Long): Flow<List<PlannerItem>> =
         plannerItemDao.getPlannerItemsByCourse(courseId)
 
+    suspend fun fetchCourseModules(courseId: Long): List<com.notivas.data.model.CanvasModule> {
+        val rawToken = preferencesManager.accessToken.first() ?: return emptyList()
+        return try {
+            apiService.getModulesWithItems("Bearer $rawToken", courseId)
+        } catch (e: Exception) {
+            Log.e("CanvasRepository", "Error fetching modules for course $courseId", e)
+            emptyList()
+        }
+    }
+
     fun getSimulationGroupsWithItems(courseId: Long): Flow<List<com.notivas.data.model.SimulationGroupWithItems>> =
         simulationDao.getGroupsWithItemsByCourse(courseId)
 

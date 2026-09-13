@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notivas.data.local.prefs.PreferencesManager
 import com.notivas.data.model.Assignment
+import com.notivas.data.model.CanvasModule
 import com.notivas.data.model.Course
 import com.notivas.data.model.PlannerItem
 import com.notivas.data.remote.openrouter.OpenRouterMessage
@@ -50,7 +51,8 @@ data class CopilotUiState(
     val mentionQuery: String = "",
     val activeMentionCourse: Course? = null,
     val courseAssignments: List<Assignment> = emptyList(),
-    val coursePlannerItems: List<PlannerItem> = emptyList()
+    val coursePlannerItems: List<PlannerItem> = emptyList(),
+    val courseModules: List<CanvasModule> = emptyList()
 )
 
 @HiltViewModel
@@ -73,6 +75,7 @@ class CopilotViewModel @Inject constructor(
     private val _activeMentionCourse = MutableStateFlow<Course?>(null)
     private val _courseAssignments = MutableStateFlow<List<Assignment>>(emptyList())
     private val _coursePlannerItems = MutableStateFlow<List<PlannerItem>>(emptyList())
+    private val _courseModules = MutableStateFlow<List<CanvasModule>>(emptyList())
 
     val uiState: StateFlow<CopilotUiState> = combine(
         combine(
@@ -102,14 +105,15 @@ class CopilotViewModel @Inject constructor(
         },
         combine(
             _courseAssignments,
-            _coursePlannerItems
-        ) { assignments, plannerItems ->
-            Pair(assignments, plannerItems)
+            _coursePlannerItems,
+            _courseModules
+        ) { assignments, plannerItems, modules ->
+            Triple(assignments, plannerItems, modules)
         }
     ) { (courses, selectedCourseId, messages, isLoading, inputText),
         (enabled, hasApiKey, model, error),
         (showMenu, step, query, activeCourse),
-        (assignments, plannerItems) ->
+        (assignments, plannerItems, modules) ->
         CopilotUiState(
             courses = courses,
             selectedCourseId = selectedCourseId,
@@ -125,7 +129,8 @@ class CopilotViewModel @Inject constructor(
             mentionQuery = query,
             activeMentionCourse = activeCourse,
             courseAssignments = assignments,
-            coursePlannerItems = plannerItems
+            coursePlannerItems = plannerItems,
+            courseModules = modules
         )
     }.stateIn(
         scope = viewModelScope,
@@ -180,8 +185,9 @@ class CopilotViewModel @Inject constructor(
         _activeMentionCourse.value = course
         _selectedCourseId.value = course.id
         _mentionStep.value = MentionStep.COURSE_RESOURCES
+        _courseModules.value = emptyList()
 
-        // Load assignments & planner items for this course
+        // Load assignments, planner items & modules for this course
         viewModelScope.launch {
             canvasRepository.getAssignmentsForCourse(course.id).firstOrNull()?.let {
                 _courseAssignments.value = it
@@ -189,12 +195,14 @@ class CopilotViewModel @Inject constructor(
             canvasRepository.getPlannerItemsForCourse(course.id).firstOrNull()?.let {
                 _coursePlannerItems.value = it
             }
+            _courseModules.value = canvasRepository.fetchCourseModules(course.id)
         }
     }
 
     fun backToCourseSelection() {
         _mentionStep.value = MentionStep.COURSES
         _activeMentionCourse.value = null
+        _courseModules.value = emptyList()
     }
 
     fun applyCourseMention(course: Course) {

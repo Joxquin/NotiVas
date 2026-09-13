@@ -53,3 +53,21 @@ data class CanvasRubricRating(
     @SerializedName("points") val points: Double? = null
 )
 
+data class CanvasModule(
+    @SerializedName("id") val id: Long,
+    @SerializedName("name") val name: String,
+    @SerializedName("position") val position: Int? = null,
+    @SerializedName("items_count") val itemsCount: Int? = null,
+    @SerializedName("items") val items: List<CanvasModuleItem>? = null
+)
+
+data class CanvasModuleItem(
+    @SerializedName("id") val id: Long,
+    @SerializedName("title") val title: String,
+    @SerializedName("type") val type: String, // "File", "Page", "Discussion", "Assignment", "ExternalUrl", "Quiz"
+    @SerializedName("html_url") val htmlUrl: String? = null,
+    @SerializedName("url") val url: String? = null,
+    @SerializedName("content_id") val contentId: Long? = null
+)
+
+

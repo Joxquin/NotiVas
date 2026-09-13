@@ -89,6 +89,21 @@ class CopilotRepository @Inject constructor(
         ),
         OpenRouterTool(
             function = OpenRouterFunction(
+                name = "get_course_modules",
+                description = "Obtiene los módulos del curso y todos los recursos, lecturas, enlaces y diapositivas subidos por el profesor en Canvas LMS.",
+                parameters = OpenRouterParameters(
+                    properties = mapOf(
+                        "course_id" to OpenRouterProperty(
+                            type = "integer",
+                            description = "ID de Canvas del curso"
+                        )
+                    ),
+                    required = listOf("course_id")
+                )
+            )
+        ),
+        OpenRouterTool(
+            function = OpenRouterFunction(
                 name = "create_simulation_group",
                 description = "Crea un nuevo grupo de evaluación ponderado en el Simulador de Notas local de NotiVas (ejemplo: 'Laboratorios', 'Exámenes', 'Trabajo Final').",
                 parameters = OpenRouterParameters(
@@ -146,7 +161,9 @@ class CopilotRepository @Inject constructor(
             append("   a) Consulta 'fetch_canvas_assignment_details' para obtener la entrega del alumno ('student_submission'), los comentarios del docente ('teacher_comments') y la evaluación por rúbrica ('rubric_assessment'). ")
             append("   b) Cita textualmente la retroalimentación y comentarios que haya dejado el docente. ")
             append("   c) Compara los puntos obtenidos en cada criterio de la rúbrica ('student_points_obtained' vs 'points') e indica con exactitud en qué criterios perdió puntos o qué comentarios específicos dejó el profesor en cada criterio. ")
-            append("5. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
+            append("5. Si te preguntan por módulos, lecturas, enlaces, diapositivas o recursos subidos por el profesor (o si se menciona un recurso de módulo como @[Curso > Módulo: Recurso]): ")
+            append("   Usa la herramienta 'get_course_modules' para listar los módulos y el contenido o material disponible en Canvas LMS para ese curso y responder detalladamente qué recursos hay o cómo encontrarlos. ")
+            append("6. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
             append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas sin repreguntar cosas que puedes deducir.")
         }
 
@@ -448,6 +465,43 @@ class CopilotRepository @Inject constructor(
                                     "tareas_disponibles_en_curso" to available
                                 )
                             )
+                        }
+                    }
+
+                    "get_course_modules" -> {
+                        val cid = args.get("course_id")?.asLong ?: selectedCourseId ?: 0L
+                        val rawToken = preferencesManager.accessToken.first()
+                        if (!rawToken.isNullOrBlank() && cid != 0L) {
+                            try {
+                                val modules = canvasApiService.getModulesWithItems("Bearer $rawToken", cid)
+                                val courseName = courses.find { it.id == cid }?.name ?: "Curso $cid"
+                                sourcesConsulted.add(
+                                    CopilotSource(
+                                        title = "Módulos de $courseName",
+                                        detail = "${modules.size} módulos obtenidos de Canvas"
+                                    )
+                                )
+                                val modulesData = modules.map { mod ->
+                                    mapOf(
+                                        "module_id" to mod.id,
+                                        "name" to mod.name,
+                                        "items" to (mod.items ?: emptyList()).map { item ->
+                                            mapOf(
+                                                "id" to item.id,
+                                                "title" to item.title,
+                                                "type" to item.type,
+                                                "html_url" to item.htmlUrl,
+                                                "url" to item.url
+                                            )
+                                        }
+                                    )
+                                }
+                                gson.toJson(modulesData)
+                            } catch (e: Exception) {
+                                gson.toJson(mapOf("error" to "No se pudieron obtener los módulos de Canvas: ${e.message}"))
+                            }
+                        } else {
+                            gson.toJson(mapOf("error" to "No hay token o course_id no válido."))
                         }
                     }
 
