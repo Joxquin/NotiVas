@@ -14,7 +14,7 @@ import com.notivas.data.model.Course
 import com.notivas.data.model.PlannerItem
 import com.notivas.data.model.UserProfile
 import com.notivas.data.remote.CanvasApiService
-import com.notivas.worker.ReminderWorker
+import com.notivas.background.worker.ReminderWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
