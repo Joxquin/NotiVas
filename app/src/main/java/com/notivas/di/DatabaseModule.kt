@@ -39,4 +39,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSimulationDao(db: CanvasDatabase): com.notivas.data.local.dao.SimulationDao = db.simulationDao()
+
+    @Provides
+    fun provideCopilotChatDao(db: CanvasDatabase): com.notivas.data.local.dao.CopilotChatDao = db.copilotChatDao()
 }

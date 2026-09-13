@@ -470,7 +470,13 @@ fun MainScreen(onLogout: () -> Unit) {
                     onApplyCourseMention = viewModel::applyCourseMention,
                     onApplyResourceMention = viewModel::applyResourceMention,
                     onBackToCourseSelection = viewModel::backToCourseSelection,
-                    onDismissMentionMenu = viewModel::dismissMentionMenu
+                    onDismissMentionMenu = viewModel::dismissMentionMenu,
+                    onOpenHistory = viewModel::openHistorySheet,
+                    onDismissHistory = viewModel::dismissHistorySheet,
+                    onStartNewChat = viewModel::startNewChat,
+                    onLoadSession = viewModel::loadSession,
+                    onRenameSession = viewModel::renameSession,
+                    onDeleteSession = viewModel::deleteSession
                 )
             }
             composable(Screen.Profile.route) {
