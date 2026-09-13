@@ -12,8 +12,14 @@ interface AssignmentDao {
     @Query("SELECT * FROM assignments ORDER BY dueAt ASC")
     fun getAllAssignments(): Flow<List<Assignment>>
 
+    @Query("SELECT * FROM assignments ORDER BY dueAt ASC")
+    suspend fun getAssignmentList(): List<Assignment>
+
     @Query("SELECT * FROM assignments WHERE courseId = :courseId ORDER BY dueAt ASC")
     fun getAssignmentsByCourse(courseId: Long): Flow<List<Assignment>>
+
+    @Query("SELECT * FROM assignments WHERE courseId = :courseId ORDER BY dueAt ASC")
+    suspend fun getAssignmentsForCourseOnce(courseId: Long): List<Assignment>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAssignments(assignments: List<Assignment>)

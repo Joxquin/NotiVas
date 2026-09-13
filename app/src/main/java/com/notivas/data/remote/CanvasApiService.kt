@@ -60,4 +60,13 @@ interface CanvasApiService {
         @Query("start_date") startDate: String,
         @Query("per_page") perPage: Int = 100
     ): List<com.notivas.data.model.PlannerItem>
+
+    @GET("api/v1/courses/{courseId}/assignments/{assignmentId}")
+    suspend fun getAssignmentDetails(
+        @Header("Authorization") token: String,
+        @Path("courseId") courseId: Long,
+        @Path("assignmentId") assignmentId: Long,
+        @Query("include[]") include: List<String> = listOf("rubric", "submission")
+    ): com.notivas.data.model.CanvasAssignmentDetailResponse
 }
+

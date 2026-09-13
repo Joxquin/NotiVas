@@ -39,4 +39,25 @@ object NetworkModule {
             .build()
             .create(CanvasApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideOpenRouterApiService(): com.notivas.data.remote.openrouter.OpenRouterApiService {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            })
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl("https://openrouter.ai/api/v1/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(com.notivas.data.remote.openrouter.OpenRouterApiService::class.java)
+    }
 }
+
