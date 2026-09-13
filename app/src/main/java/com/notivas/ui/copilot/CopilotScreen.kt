@@ -25,6 +25,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -796,6 +798,20 @@ private fun CopilotInputBar(
     onTriggerMention: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Keep internal TextFieldValue synchronized with incoming inputText while placing cursor at the end
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(inputText, selection = TextRange(inputText.length)))
+    }
+
+    LaunchedEffect(inputText) {
+        if (textFieldValue.text != inputText) {
+            textFieldValue = TextFieldValue(
+                text = inputText,
+                selection = TextRange(inputText.length)
+            )
+        }
+    }
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -823,7 +839,16 @@ private fun CopilotInputBar(
                 ) {
                     // Quick '@' mention button inside the input capsule
                     IconButton(
-                        onClick = onTriggerMention,
+                        onClick = {
+                            onTriggerMention()
+                            // Immediately position cursor after newly appended '@'
+                            val newLen = if (inputText.isEmpty() || inputText.endsWith(" ")) {
+                                inputText.length + 1
+                            } else {
+                                inputText.length + 2
+                            }
+                            textFieldValue = textFieldValue.copy(selection = TextRange(newLen))
+                        },
                         enabled = enabled && !isLoading,
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -845,8 +870,11 @@ private fun CopilotInputBar(
                     }
 
                     TextField(
-                        value = inputText,
-                        onValueChange = onInputChange,
+                        value = textFieldValue,
+                        onValueChange = { newValue ->
+                            textFieldValue = newValue
+                            onInputChange(newValue.text)
+                        },
                         placeholder = {
                             Text(
                                 text = if (enabled)
