@@ -67,19 +67,23 @@ class CopilotRepository @Inject constructor(
         OpenRouterTool(
             function = OpenRouterFunction(
                 name = "fetch_canvas_assignment_details",
-                description = "Consulta directamente a la API de Canvas LMS para obtener la consigna completa y la rúbrica de evaluación detallada (criterios y puntuaciones) de una tarea.",
+                description = "Consulta directamente la API de Canvas LMS o la base local para obtener la consigna completa, descripción y rúbrica detallada (criterios y puntuaciones) de una tarea. Puedes buscar por nombre de tarea (ej: 'Laboratorio 4') o por su ID numérico.",
                 parameters = OpenRouterParameters(
                     properties = mapOf(
                         "course_id" to OpenRouterProperty(
                             type = "integer",
-                            description = "ID de Canvas del curso"
+                            description = "ID numérico de Canvas del curso. Si el usuario menciona el nombre del curso (ej: 'Tecnologías Emergentes'), usa el ID correspondiente de la lista de cursos."
+                        ),
+                        "assignment_name" to OpenRouterProperty(
+                            type = "string",
+                            description = "Nombre o parte del nombre de la tarea (ej: 'Laboratorio 4', 'Semana 3', 'Examen Parcial'). Úsalo cuando no tengas el ID exacto."
                         ),
                         "assignment_id" to OpenRouterProperty(
                             type = "integer",
-                            description = "ID de Canvas de la tarea"
+                            description = "ID numérico de Canvas de la tarea (si ya se conoce)."
                         )
                     ),
-                    required = listOf("course_id", "assignment_id")
+                    required = listOf("course_id")
                 )
             )
         ),
@@ -125,16 +129,21 @@ class CopilotRepository @Inject constructor(
         val coursesSummary = courses.joinToString("; ") { "ID: ${it.id} - ${it.name} (${it.courseCode ?: "N/A"})" }
 
         val systemPrompt = buildString {
-            append("Eres NotiVas Copilot, un asistente académico inteligente, empático y estructurado para estudiantes universitarios integrados con Canvas LMS. ")
+            append("Eres NotiVas Copilot, un asistente académico inteligente, autónomo y proactivo para estudiantes universitarios integrados con Canvas LMS. ")
             append("Respondes en español con formato Markdown limpio (viñetas, negritas, tablas si es necesario). ")
             append("Cuentas con herramientas para consultar información local y en vivo de Canvas LMS. ")
-            append("Cursos inscritos del estudiante: [$coursesSummary]. ")
+            append("LISTA DE CURSOS INSCRITOS: [$coursesSummary]. ")
             if (selectedCourseId != null) {
-                append("El estudiante tiene seleccionado actualmente el curso ID: $selectedCourseId. Prioriza este curso en tus respuestas a menos que pregunte por otro. ")
+                append("El estudiante tiene seleccionado actualmente el curso ID: $selectedCourseId en la barra superior. ")
             }
-            append("Si te piden detalles de rúbricas o consignas específicas, usa fetch_canvas_assignment_details. ")
-            append("Si te piden crear grupos de notas, usa create_simulation_group. ")
-            append("Sé conciso, directo y útil.")
+            append("INSTRUCCIONES CLAVE DE AUTONOMÍA E INTELIGENCIA: ")
+            append("1. NUNCA pidas al usuario IDs numéricos técnicos (como course_id o assignment_id). Tú tienes la lista de cursos arriba con sus IDs exactos. Identifícalos tú mismo por el nombre mencionado o por similitud (ej: 'Tecnologías Emergentes' -> busca su ID en la lista). ")
+            append("2. Si el usuario pregunta qué tiene que hacer en una tarea, laboratorio, examen o entrega (ej: 'En tecnologías emergentes, Laboratorio 4, qué tengo que hacer'): ")
+            append("   a) Obtén primero el ID del curso de la lista. ")
+            append("   b) Llama a la herramienta 'fetch_canvas_assignment_details' pasando el course_id y el assignment_name (ej: 'Laboratorio 4') o consulta 'get_course_assignments' para ubicarla. ¡NO le pidas el ID al alumno! ")
+            append("3. Si obtienes los detalles de la consigna o rúbrica, explica clara y resumidamente: objetivo de la entrega, qué debe presentar el estudiante, criterios de la rúbrica y fecha límite si la tiene. ")
+            append("4. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
+            append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas.")
         }
 
         val messages = mutableListOf<OpenRouterMessage>()
@@ -238,39 +247,121 @@ class CopilotRepository @Inject constructor(
 
                     "fetch_canvas_assignment_details" -> {
                         val cid = args.get("course_id")?.asLong ?: selectedCourseId ?: 0L
-                        val aid = args.get("assignment_id")?.asLong ?: 0L
+                        var aid = args.get("assignment_id")?.asLong ?: 0L
+                        val assignmentNameQuery = args.get("assignment_name")?.asString?.trim()
+
+                        // If aid not provided or 0, search for it locally or by name
+                        if (aid == 0L && !assignmentNameQuery.isNullOrBlank()) {
+                            val courseAssignments = assignmentDao.getAssignmentsForCourseOnce(cid)
+                            val matched = courseAssignments.find {
+                                it.name.contains(assignmentNameQuery, ignoreCase = true)
+                            } ?: courseAssignments.find {
+                                // Try matching keywords (e.g. "Laboratorio 4" -> ["laboratorio", "4"])
+                                val keywords = assignmentNameQuery.lowercase().split(" ")
+                                keywords.all { kw -> it.name.lowercase().contains(kw) }
+                            }
+                            if (matched != null) {
+                                aid = matched.id
+                            }
+                        }
+
+                        // If still not found, check all assignments in DB
+                        if (aid == 0L && !assignmentNameQuery.isNullOrBlank()) {
+                            val allAssignments = assignmentDao.getAssignmentList()
+                            val matched = allAssignments.find {
+                                it.name.contains(assignmentNameQuery, ignoreCase = true)
+                            }
+                            if (matched != null) {
+                                aid = matched.id
+                            }
+                        }
+
                         val canvasToken = preferencesManager.accessToken.first()
-                        if (canvasToken.isNullOrBlank()) {
-                            gson.toJson(mapOf("error" to "Token de Canvas no disponible"))
+                        if (aid != 0L && !canvasToken.isNullOrBlank()) {
+                            try {
+                                val details = canvasApiService.getAssignmentDetails(
+                                    token = "Bearer $canvasToken",
+                                    courseId = cid,
+                                    assignmentId = aid
+                                )
+                                val cleanDesc = details.description?.let { cleanHtml(it) } ?: "Sin descripción"
+                                sourcesConsulted.add(
+                                    CopilotSource(
+                                        title = "Canvas LMS en vivo: ${details.name}",
+                                        detail = "Rúbrica con ${details.rubric?.size ?: 0} criterios evaluativos"
+                                    )
+                                )
+                                val result = mapOf(
+                                    "id" to details.id,
+                                    "name" to details.name,
+                                    "due_at" to details.dueAt,
+                                    "description" to cleanDesc.take(1500),
+                                    "points_possible" to details.pointsPossible,
+                                    "rubric" to details.rubric?.map { criterion ->
+                                        mapOf(
+                                            "description" to criterion.description,
+                                            "long_description" to criterion.longDescription,
+                                            "points" to criterion.points,
+                                            "ratings" to criterion.ratings?.map { r ->
+                                                "${r.description}: ${r.points} pts"
+                                            }
+                                        )
+                                    }
+                                )
+                                gson.toJson(result)
+                            } catch (e: Exception) {
+                                // Fallback to local DB if Canvas API call fails
+                                val local = assignmentDao.getAssignmentsForCourseOnce(cid).find { it.id == aid }
+                                if (local != null) {
+                                    val cleanDesc = local.description?.let { cleanHtml(it) } ?: "Sin descripción detallada"
+                                    sourcesConsulted.add(
+                                        CopilotSource(
+                                            title = "Base local: ${local.name}",
+                                            detail = "Puntaje máximo: ${local.pointsPossible ?: 20} pts"
+                                        )
+                                    )
+                                    gson.toJson(
+                                        mapOf(
+                                            "id" to local.id,
+                                            "name" to local.name,
+                                            "due_at" to local.dueAt,
+                                            "description" to cleanDesc.take(1500),
+                                            "points_possible" to local.pointsPossible,
+                                            "status" to local.status
+                                        )
+                                    )
+                                } else {
+                                    gson.toJson(mapOf("error" to "No se pudo obtener detalles de la tarea: ${e.message}"))
+                                }
+                            }
+                        } else if (aid != 0L) {
+                            // Fallback to local DB without token
+                            val local = assignmentDao.getAssignmentsForCourseOnce(cid).find { it.id == aid }
+                            if (local != null) {
+                                val cleanDesc = local.description?.let { cleanHtml(it) } ?: "Sin descripción"
+                                gson.toJson(
+                                    mapOf(
+                                        "id" to local.id,
+                                        "name" to local.name,
+                                        "due_at" to local.dueAt,
+                                        "description" to cleanDesc.take(1500),
+                                        "points_possible" to local.pointsPossible
+                                    )
+                                )
+                            } else {
+                                gson.toJson(mapOf("error" to "Tarea encontrada con ID $aid pero sin datos disponibles."))
+                            }
                         } else {
-                            val details = canvasApiService.getAssignmentDetails(
-                                token = "Bearer $canvasToken",
-                                courseId = cid,
-                                assignmentId = aid
-                            )
-                            val cleanDesc = details.description?.let { cleanHtml(it) } ?: "Sin descripción"
-                            sourcesConsulted.add(
-                                CopilotSource(
-                                    title = "Canvas LMS en vivo: ${details.name}",
-                                    detail = "Rúbrica con ${details.rubric?.size ?: 0} criterios evaluativos"
+                            // Assignment couldn't be found by name: return available assignments in that course so LLM can pick or suggest!
+                            val available = assignmentDao.getAssignmentsForCourseOnce(cid).map {
+                                mapOf("id" to it.id, "name" to it.name, "due_at" to it.dueAt)
+                            }
+                            gson.toJson(
+                                mapOf(
+                                    "error" to "No se encontró ninguna tarea con el término '$assignmentNameQuery'.",
+                                    "tareas_disponibles_en_curso" to available
                                 )
                             )
-                            val result = mapOf(
-                                "name" to details.name,
-                                "description" to cleanDesc.take(1200),
-                                "points_possible" to details.pointsPossible,
-                                "rubric" to details.rubric?.map { criterion ->
-                                    mapOf(
-                                        "description" to criterion.description,
-                                        "long_description" to criterion.longDescription,
-                                        "points" to criterion.points,
-                                        "ratings" to criterion.ratings?.map { r ->
-                                            "${r.description}: ${r.points} pts"
-                                        }
-                                    )
-                                }
-                            )
-                            gson.toJson(result)
                         }
                     }
 
