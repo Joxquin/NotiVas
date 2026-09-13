@@ -27,7 +27,8 @@ data class SimEvaluation(
     val name: String,
     val weight: Float, // percentage e.g. 0.20f (20%)
     val isGraded: Boolean,
-    val actualScore: Float?, // On scale 0-20
+    val actualScore: Float?, // On scale 0-20 (normalized for averages)
+    val rawScore: Float? = null, // Original raw score from Canvas (e.g. 6.5 out of 14)
     val simulatedScore: Float, // On scale 0-20
     val pointsPossible: Double?,
     val gradedAt: String? = null,
@@ -248,6 +249,7 @@ class NotasViewModel @Inject constructor(
                 weight = weight,
                 isGraded = isGraded,
                 actualScore = actualScoreOn20,
+                rawScore = rawScore?.toFloat(),
                 simulatedScore = simulatedScore,
                 pointsPossible = assignment.pointsPossible,
                 gradedAt = gradedAt,

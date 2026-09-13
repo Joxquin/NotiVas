@@ -1198,25 +1198,47 @@ private fun GradedEvaluationItem(evaluation: SimEvaluation) {
                 )
             }
 
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Text(
-                    text =
-                        String.format(
-                            Locale.US,
-                            "%.1f / 20",
-                            evaluation.actualScore ?: 0f
+            val pointsPossible = evaluation.pointsPossible
+            val raw = evaluation.rawScore
+            val actualOn20 = evaluation.actualScore ?: 0f
+
+            Column(horizontalAlignment = Alignment.End) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    val scoreText = if (raw != null && pointsPossible != null && Math.abs(pointsPossible - 20.0) > 0.05) {
+                        // Original score (e.g. 6.5 / 14)
+                        val formattedRaw = if (raw % 1.0f == 0.0f) String.format(Locale.US, "%.0f", raw) else String.format(Locale.US, "%.1f", raw)
+                        val formattedMax = if (pointsPossible % 1.0 == 0.0) String.format(Locale.US, "%.0f", pointsPossible) else String.format(Locale.US, "%.1f", pointsPossible)
+                        "$formattedRaw / $formattedMax"
+                    } else {
+                        String.format(Locale.US, "%.1f / 20", actualOn20)
+                    }
+
+                    Text(
+                        text = scoreText,
+                        style =
+                            MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier =
+                            Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                // If original scale was not 20, show the normalized equivalent in small text below
+                if (raw != null && pointsPossible != null && Math.abs(pointsPossible - 20.0) > 0.05) {
+                    Text(
+                        text = String.format(Locale.US, "equiv. %.1f/20", actualOn20),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Medium
                         ),
-                    style =
-                        MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier =
-                        Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(top = 2.dp, end = 2.dp)
+                    )
+                }
             }
         }
     }
