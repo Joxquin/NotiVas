@@ -1,4 +1,4 @@
-package com.notivas.util
+package com.notivas.background.alarm
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -18,20 +18,21 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 @Singleton
-class AlarmSchedulerHelper @Inject constructor(
+class AndroidAlarmScheduler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val preferencesManager: PreferencesManager,
     private val repositoryProvider: Provider<CanvasRepository>
-) {
+) : AlarmScheduler {
+
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    suspend fun scheduleAlarmsForAssignment(assignment: Assignment, courseName: String) {
-        if (assignment.isCompleted) {
-            cancelAlarmsForAssignment(assignment.id)
+    override suspend fun schedule(item: AssignmentAlarmItem) {
+        if (item.isCompleted) {
+            cancel(item)
             return
         }
 
-        val dueStr = assignment.dueAt ?: assignment.lockAt ?: return
+        val dueStr = item.dueAt ?: item.lockAt ?: return
         val dueDate = try {
             ZonedDateTime.parse(dueStr)
         } catch (_: Exception) {
@@ -43,52 +44,97 @@ class AlarmSchedulerHelper @Inject constructor(
         val notif3hEnabled = preferencesManager.notif3h.first()
         val notif30mEnabled = preferencesManager.notif30m.first()
 
-        val shortName = if (assignment.name.length > 38) {
-            assignment.name.take(35) + "..."
+        val shortName = if (item.name.length > 38) {
+            item.name.take(35) + "..."
         } else {
-            assignment.name
+            item.name
         }
 
         // 1. Alerta 24 horas antes
-        if (notif24hEnabled && !assignment.notified24h) {
+        if (notif24hEnabled && !item.notified24h) {
             val triggerTime = dueDate.minusHours(24)
             if (triggerTime.isAfter(now)) {
                 scheduleExactAlarm(
-                    assignmentId = assignment.id,
+                    assignmentId = item.id,
                     alertType = AssignmentAlarmReceiver.ALERT_TYPE_24H,
                     triggerEpochMillis = triggerTime.toInstant().toEpochMilli(),
-                    courseName = courseName,
+                    courseName = item.courseName,
                     assignmentName = shortName
                 )
             }
         }
 
         // 2. Alerta 3 horas antes
-        if (notif3hEnabled && !assignment.notified3h) {
+        if (notif3hEnabled && !item.notified3h) {
             val triggerTime = dueDate.minusHours(3)
             if (triggerTime.isAfter(now)) {
                 scheduleExactAlarm(
-                    assignmentId = assignment.id,
+                    assignmentId = item.id,
                     alertType = AssignmentAlarmReceiver.ALERT_TYPE_3H,
                     triggerEpochMillis = triggerTime.toInstant().toEpochMilli(),
-                    courseName = courseName,
+                    courseName = item.courseName,
                     assignmentName = shortName
                 )
             }
         }
 
         // 3. Alerta 30 minutos antes
-        if (notif30mEnabled && !assignment.notified30m) {
+        if (notif30mEnabled && !item.notified30m) {
             val triggerTime = dueDate.minusMinutes(30)
             if (triggerTime.isAfter(now)) {
                 scheduleExactAlarm(
-                    assignmentId = assignment.id,
+                    assignmentId = item.id,
                     alertType = AssignmentAlarmReceiver.ALERT_TYPE_30M,
                     triggerEpochMillis = triggerTime.toInstant().toEpochMilli(),
-                    courseName = courseName,
+                    courseName = item.courseName,
                     assignmentName = shortName
                 )
             }
+        }
+    }
+
+    override suspend fun scheduleAlarmsForAssignment(assignment: Assignment, courseName: String) {
+        schedule(AssignmentAlarmItem.fromAssignment(assignment, courseName))
+    }
+
+    override fun cancel(item: AssignmentAlarmItem) {
+        cancelAlarmsForAssignment(item.id)
+    }
+
+    override fun cancelAlarmsForAssignment(assignmentId: Long) {
+        listOf(
+            AssignmentAlarmReceiver.ALERT_TYPE_24H,
+            AssignmentAlarmReceiver.ALERT_TYPE_3H,
+            AssignmentAlarmReceiver.ALERT_TYPE_30M
+        ).forEach { alertType ->
+            val intent = Intent(context, AssignmentAlarmReceiver::class.java)
+            val requestCode = generateRequestCode(assignmentId, alertType)
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            if (pendingIntent != null) {
+                alarmManager.cancel(pendingIntent)
+                pendingIntent.cancel()
+            }
+        }
+    }
+
+    override suspend fun rescheduleAllAlarms() {
+        try {
+            val repository = repositoryProvider.get()
+            val assignments = repository.allAssignments.first()
+            val courses = repository.allCourses.first()
+            val courseMap = courses.associateBy { it.id }
+
+            assignments.forEach { assignment ->
+                val courseName = courseMap[assignment.courseId]?.name ?: "Curso"
+                scheduleAlarmsForAssignment(assignment, courseName)
+            }
+        } catch (e: Exception) {
+            Log.e("AndroidAlarmScheduler", "Error rescheduling all alarms", e)
         }
     }
 
@@ -137,44 +183,7 @@ class AlarmSchedulerHelper @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            Log.e("AlarmSchedulerHelper", "Error scheduling alarm for assignment $assignmentId", e)
-        }
-    }
-
-    fun cancelAlarmsForAssignment(assignmentId: Long) {
-        listOf(
-            AssignmentAlarmReceiver.ALERT_TYPE_24H,
-            AssignmentAlarmReceiver.ALERT_TYPE_3H,
-            AssignmentAlarmReceiver.ALERT_TYPE_30M
-        ).forEach { alertType ->
-            val intent = Intent(context, AssignmentAlarmReceiver::class.java)
-            val requestCode = generateRequestCode(assignmentId, alertType)
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                requestCode,
-                intent,
-                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-            )
-            if (pendingIntent != null) {
-                alarmManager.cancel(pendingIntent)
-                pendingIntent.cancel()
-            }
-        }
-    }
-
-    suspend fun rescheduleAllAlarms() {
-        try {
-            val repository = repositoryProvider.get()
-            val assignments = repository.allAssignments.first()
-            val courses = repository.allCourses.first()
-            val courseMap = courses.associateBy { it.id }
-
-            assignments.forEach { assignment ->
-                val courseName = courseMap[assignment.courseId]?.name ?: "Curso"
-                scheduleAlarmsForAssignment(assignment, courseName)
-            }
-        } catch (e: Exception) {
-            Log.e("AlarmSchedulerHelper", "Error rescheduling all alarms", e)
+            Log.e("AndroidAlarmScheduler", "Error scheduling alarm for assignment $assignmentId", e)
         }
     }
 

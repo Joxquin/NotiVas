@@ -31,7 +31,7 @@
         </activity>
 
         <receiver
-            android:name=".util.AssignmentAlarmReceiver"
+            android:name=".background.alarm.AssignmentAlarmReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

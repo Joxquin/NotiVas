@@ -1,8 +1,9 @@
-package com.notivas.util
+package com.notivas.background.alarm
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.notivas.background.notification.NotificationHelper
 import com.notivas.data.repository.CanvasRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -20,13 +21,13 @@ class AssignmentAlarmReceiver : BroadcastReceiver() {
     lateinit var repository: CanvasRepository
 
     @Inject
-    lateinit var alarmSchedulerHelper: AlarmSchedulerHelper
+    lateinit var alarmScheduler: AlarmScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             // Reagendar todas las alarmas tras el reinicio del dispositivo
             CoroutineScope(Dispatchers.IO).launch {
-                alarmSchedulerHelper.rescheduleAllAlarms()
+                alarmScheduler.rescheduleAllAlarms()
             }
             return
         }
@@ -58,23 +59,9 @@ class AssignmentAlarmReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             when (alertType) {
-                ALERT_TYPE_30M -> {
-                    repository.markNotified30m(assignmentId)
-                    repository.markNotified3h(assignmentId)
-                    repository.markNotified24h(assignmentId)
-                    repository.markNotificationSent(assignmentId)
-                }
-
-                ALERT_TYPE_3H -> {
-                    repository.markNotified3h(assignmentId)
-                    repository.markNotified24h(assignmentId)
-                    repository.markNotificationSent(assignmentId)
-                }
-
-                ALERT_TYPE_24H -> {
-                    repository.markNotified24h(assignmentId)
-                    repository.markNotificationSent(assignmentId)
-                }
+                ALERT_TYPE_24H -> repository.markNotified24h(assignmentId)
+                ALERT_TYPE_3H -> repository.markNotified3h(assignmentId)
+                ALERT_TYPE_30M -> repository.markNotified30m(assignmentId)
             }
         }
     }
@@ -85,8 +72,8 @@ class AssignmentAlarmReceiver : BroadcastReceiver() {
         const val EXTRA_COURSE_NAME = "extra_course_name"
         const val EXTRA_ASSIGNMENT_NAME = "extra_assignment_name"
 
-        const val ALERT_TYPE_24H = "ALERT_24H"
-        const val ALERT_TYPE_3H = "ALERT_3H"
-        const val ALERT_TYPE_30M = "ALERT_30M"
+        const val ALERT_TYPE_24H = "24h"
+        const val ALERT_TYPE_3H = "3h"
+        const val ALERT_TYPE_30M = "30m"
     }
 }
