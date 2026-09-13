@@ -246,50 +246,76 @@ fun CopilotScreen(
             )
         }
 
-        // Main Message Flow or Empty State Suggestions
-        if (uiState.messages.isEmpty()) {
-            CopilotEmptyState(
-                coursesCount = uiState.courses.size,
-                currentModel = uiState.currentModel,
-                onSuggestionClick = { onSendMessage(it) },
-                modifier = Modifier.weight(1f)
-            )
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
-            ) {
-                items(uiState.messages, key = { it.id }) { message ->
-                    CopilotMessageBubble(message = message)
-                }
+        // Messages Flow & Contextual @ Mention Overlay Container
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            // Main Message Flow or Empty State Suggestions
+            if (uiState.messages.isEmpty()) {
+                CopilotEmptyState(
+                    coursesCount = uiState.courses.size,
+                    currentModel = uiState.currentModel,
+                    onSuggestionClick = { onSendMessage(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
+                ) {
+                    items(uiState.messages, key = { it.id }) { message ->
+                        CopilotMessageBubble(message = message)
+                    }
 
-                if (uiState.isLoading) {
-                    item(key = "loading_bubble") {
-                        CopilotLoadingBubble()
+                    if (uiState.isLoading) {
+                        item(key = "loading_bubble") {
+                            CopilotLoadingBubble()
+                        }
                     }
                 }
             }
-        }
 
-        // Contextual @ Mention Popup (floating directly above the input bar)
-        AnimatedVisibility(
-            visible = uiState.showMentionMenu,
-            enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut()
-        ) {
-            CopilotMentionPopup(
-                uiState = uiState,
-                onSelectCourse = onSelectMentionCourse,
-                onApplyCourse = onApplyCourseMention,
-                onApplyResource = onApplyResourceMention,
-                onBack = onBackToCourseSelection,
-                onDismiss = onDismissMentionMenu
-            )
+            // Scrim / Fondo oscuro con fade-in y fade-out suave al abrir o cerrar el menú @
+            androidx.compose.animation.AnimatedVisibility(
+                visible = uiState.showMentionMenu,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.35f))
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null,
+                            onClick = onDismissMentionMenu
+                        )
+                )
+            }
+
+            // Contextual @ Mention Popup (flotando directamente encima de la barra de input)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = uiState.showMentionMenu,
+                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                CopilotMentionPopup(
+                    uiState = uiState,
+                    onSelectCourse = onSelectMentionCourse,
+                    onApplyCourse = onApplyCourseMention,
+                    onApplyResource = onApplyResourceMention,
+                    onBack = onBackToCourseSelection,
+                    onDismiss = onDismissMentionMenu
+                )
+            }
         }
 
         // Docked input bar with '@' trigger button
