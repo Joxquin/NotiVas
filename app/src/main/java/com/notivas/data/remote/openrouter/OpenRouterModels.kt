@@ -7,7 +7,7 @@ data class OpenRouterChatRequest(
     @SerializedName("messages") val messages: List<OpenRouterMessage>,
     @SerializedName("tools") val tools: List<OpenRouterTool>? = null,
     @SerializedName("temperature") val temperature: Double? = 0.3,
-    @SerializedName("max_tokens") val maxTokens: Int? = 1500
+    @SerializedName("max_tokens") val maxTokens: Int? = 4000
 )
 
 data class OpenRouterMessage(

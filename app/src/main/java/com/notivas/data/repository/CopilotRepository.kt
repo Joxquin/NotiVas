@@ -186,19 +186,23 @@ class CopilotRepository @Inject constructor(
                 append("El estudiante tiene seleccionado actualmente el curso ID: $selectedCourseId en la barra superior. ")
             }
             append("INSTRUCCIONES CLAVE DE AUTONOMÍA E INTELIGENCIA: ")
-            append("1. NUNCA pidas al usuario confirmación o IDs técnicos (como course_id o assignment_id). Tú tienes la lista de cursos arriba con sus nombres e IDs. Si el usuario usa un nombre abreviado o parcial (ej: 'Innovación tecnológica' -> 'Investigación e Innovación Tecnológica', 'Web' -> 'Desarrollo de Aplicaciones Web', 'Móviles' -> 'Programación en Móviles'), asúmelo directamente e identifica su ID sin preguntarle. ")
-            append("2. Si el usuario se refiere a una tarea como 'laboratorio 2', 'entregable 2', 'semana 2' o similar: ")
-            append("   a) Ten en cuenta que en Canvas los nombres suelen codificarse con siglas de la semana o tipo (ej: 'PTAL-S02', 'Laboratorio S2', 'TEO-S2', 'S02'). El número '2' o 'S02' o 'S2' identifica la semana/laboratorio 2. ")
-            append("   b) Llama a 'fetch_canvas_assignment_details' pasando el course_id y el assignment_name (ej: 'S02' o '2' o 'Laboratorio 2'). Si no estás 100% seguro del nombre exacto, primero llama a 'get_course_assignments' para ver los nombres reales de las tareas del curso y elige automáticamente la que corresponde a esa semana/entregable. ¡No le pidas al alumno que te diga el código de la tarea! ")
-            append("3. Si obtienes los detalles de la consigna o rúbrica, explica clara y resumidamente: objetivo de la entrega, qué debe presentar el estudiante, criterios de la rúbrica y fecha límite si la tiene. ")
-            append("4. Si el estudiante pregunta por qué obtuvo cierta calificación, por qué tuvo X nota (ej: '¿por qué tuve 15 en tal tarea?'): ")
+            append("1. NUNCA pidas al usuario confirmación o IDs técnicos (como course_id o assignment_id). Tú tienes la lista de cursos arriba con sus nombres e IDs. Si el usuario usa un nombre abreviado o parcial (ej: 'Innovación tecnológica' -> 'Investigación e Innovación Tecnológica', 'Tecnologías emergentes' -> 'Tecnologías Emergentes', 'Web' -> 'Desarrollo de Aplicaciones Web'), asúmelo directamente e identifica su ID sin preguntarle. ")
+            append("2. Si el usuario pregunta por 'el último laboratorio', 'la última tarea', 'la próxima entrega', 'qué tengo que hacer', 'laboratorio X' o similar de un curso: ")
+            append("   a) Si pregunta por el 'último' o no sabes el nombre exacto, primero llama a 'get_course_assignments' con el course_id para ver todas las tareas, sus fechas de entrega y sus nombres reales. ")
+            append("   b) Identifica cuál es la tarea/laboratorio más reciente o pendiente según su fecha o numeración (ej: S4 > S3 > S2). ")
+            append("   c) Llama de inmediato a 'fetch_canvas_assignment_details' con el course_id y assignment_name o assignment_id de esa tarea para obtener la consigna completa en vivo de Canvas LMS y responder detalladamente. ¡NUNCA respondas con 'No se obtuvo respuesta final' ni digas que necesitas el ID! ")
+            append("3. Si el mensaje del estudiante incluye etiquetas de mención como @[Curso > Tarea] o @[Curso > Módulo: Recurso] o @[   > Recurso]: ")
+            append("   a) Extrae el nombre del recurso y del curso de la etiqueta. Si el curso no está especificado en la etiqueta, busca el curso correspondiente en tu lista de cursos inscritos. ")
+            append("   b) Si es una tarea o laboratorio, llama a 'fetch_canvas_assignment_details'. Si es un recurso o página de módulo, llama a 'fetch_module_item_content'. ")
+            append("4. Si obtienes los detalles de la consigna o rúbrica, explica clara y resumidamente: objetivo de la entrega, qué debe presentar el estudiante, procedimientos, formato (ej. PDF, individual/grupal), medio de entrega y fecha límite con hora si la tiene. ")
+            append("5. Si el estudiante pregunta por qué obtuvo cierta calificación, por qué tuvo X nota (ej: '¿por qué tuve 15 en tal tarea?'): ")
             append("   a) Consulta 'fetch_canvas_assignment_details' para obtener la entrega del alumno ('student_submission'), los comentarios del docente ('teacher_comments') y la evaluación por rúbrica ('rubric_assessment'). ")
             append("   b) Cita textualmente la retroalimentación y comentarios que haya dejado el docente. ")
             append("   c) Compara los puntos obtenidos en cada criterio de la rúbrica ('student_points_obtained' vs 'points') e indica con exactitud en qué criterios perdió puntos o qué comentarios específicos dejó el profesor en cada criterio. ")
-            append("5. Si te preguntan por módulos, lecturas, enlaces, diapositivas o recursos subidos por el profesor (o si se menciona un recurso de módulo como @[Curso > Módulo: Recurso] o te piden 'explícame' / 'detállame como se evaluará' / etc.): ")
+            append("6. Si te preguntan por módulos, lecturas, enlaces, diapositivas o recursos subidos por el profesor: ")
             append("   a) Si necesitas ver la lista de módulos y qué recursos hay, llama a 'get_course_modules'. ")
-            append("   b) Si el usuario menciona un recurso específico o pide que le expliques o detalles su contenido (por ejemplo 'Sistema de Evaluación', 'Guía', 'Lectura S1', 'Temario'): DEBES llamar a 'fetch_module_item_content' pasando el course_id y el resource_name. ¡NUNCA le digas que no puedes leer la página o que solo ves el título! Usa 'fetch_module_item_content' para obtener el texto completo, HTML limpio o enlace del recurso y explicarle detalladamente su contenido al estudiante. ")
-            append("6. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
+            append("   b) Si el usuario menciona un recurso específico o pide que le expliques o detalles su contenido (por ejemplo 'Sistema de Evaluación', 'Guía', 'Lectura S1', 'Temario'): DEBES llamar a 'fetch_module_item_content' pasando el course_id y el resource_name. ¡NUNCA le digas que no puedes leer la página o que solo ves el título! ")
+            append("7. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
             append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas sin repreguntar cosas que puedes deducir.")
         }
 
@@ -789,8 +793,20 @@ class CopilotRepository @Inject constructor(
             }
 
             val followUpBody = followUpResponse.body()
-            val finalReply = followUpBody?.choices?.firstOrNull()?.message?.content
-                ?: "No se obtuvo respuesta final."
+            var finalReply = followUpBody?.choices?.firstOrNull()?.message?.content
+            if (finalReply.isNullOrBlank()) {
+                // If model returned empty content or called a tool again, generate a clean summary from sourcesConsulted
+                if (sourcesConsulted.isNotEmpty()) {
+                    finalReply = buildString {
+                        append("He consultado la siguiente información de Canvas LMS:\n\n")
+                        sourcesConsulted.forEach { src ->
+                            append("* **${src.title}**: ${src.detail}\n")
+                        }
+                    }
+                } else {
+                    finalReply = "Se procesó la consulta con Canvas LMS, pero no se generó texto de respuesta adicional."
+                }
+            }
 
             val secondUsage = followUpBody?.usage
             val firstUsageTokens = firstUsage?.totalTokens ?: 0
