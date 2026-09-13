@@ -137,17 +137,17 @@ class CopilotRepository @Inject constructor(
                 append("El estudiante tiene seleccionado actualmente el curso ID: $selectedCourseId en la barra superior. ")
             }
             append("INSTRUCCIONES CLAVE DE AUTONOMÍA E INTELIGENCIA: ")
-            append("1. NUNCA pidas al usuario IDs numéricos técnicos (como course_id o assignment_id). Tú tienes la lista de cursos arriba con sus IDs exactos. Identifícalos tú mismo por el nombre mencionado o por similitud (ej: 'Tecnologías Emergentes' -> busca su ID en la lista). ")
-            append("2. Si el usuario pregunta qué tiene que hacer en una tarea, laboratorio, examen o entrega (ej: 'En tecnologías emergentes, Laboratorio 4, qué tengo que hacer'): ")
-            append("   a) Obtén primero el ID del curso de la lista. ")
-            append("   b) Llama a la herramienta 'fetch_canvas_assignment_details' pasando el course_id y el assignment_name (ej: 'Laboratorio 4') o consulta 'get_course_assignments' para ubicarla. ¡NO le pidas el ID al alumno! ")
+            append("1. NUNCA pidas al usuario confirmación o IDs técnicos (como course_id o assignment_id). Tú tienes la lista de cursos arriba con sus nombres e IDs. Si el usuario usa un nombre abreviado o parcial (ej: 'Innovación tecnológica' -> 'Investigación e Innovación Tecnológica', 'Web' -> 'Desarrollo de Aplicaciones Web', 'Móviles' -> 'Programación en Móviles'), asúmelo directamente e identifica su ID sin preguntarle. ")
+            append("2. Si el usuario se refiere a una tarea como 'laboratorio 2', 'entregable 2', 'semana 2' o similar: ")
+            append("   a) Ten en cuenta que en Canvas los nombres suelen codificarse con siglas de la semana o tipo (ej: 'PTAL-S02', 'Laboratorio S2', 'TEO-S2', 'S02'). El número '2' o 'S02' o 'S2' identifica la semana/laboratorio 2. ")
+            append("   b) Llama a 'fetch_canvas_assignment_details' pasando el course_id y el assignment_name (ej: 'S02' o '2' o 'Laboratorio 2'). Si no estás 100% seguro del nombre exacto, primero llama a 'get_course_assignments' para ver los nombres reales de las tareas del curso y elige automáticamente la que corresponde a esa semana/entregable. ¡No le pidas al alumno que te diga el código de la tarea! ")
             append("3. Si obtienes los detalles de la consigna o rúbrica, explica clara y resumidamente: objetivo de la entrega, qué debe presentar el estudiante, criterios de la rúbrica y fecha límite si la tiene. ")
             append("4. Si el estudiante pregunta por qué obtuvo cierta calificación, por qué tuvo X nota (ej: '¿por qué tuve 15 en tal tarea?'): ")
             append("   a) Consulta 'fetch_canvas_assignment_details' para obtener la entrega del alumno ('student_submission'), los comentarios del docente ('teacher_comments') y la evaluación por rúbrica ('rubric_assessment'). ")
             append("   b) Cita textualmente la retroalimentación y comentarios que haya dejado el docente. ")
             append("   c) Compara los puntos obtenidos en cada criterio de la rúbrica ('student_points_obtained' vs 'points') e indica con exactitud en qué criterios perdió puntos o qué comentarios específicos dejó el profesor en cada criterio. ")
             append("5. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
-            append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas.")
+            append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas sin repreguntar cosas que puedes deducir.")
         }
 
         val messages = mutableListOf<OpenRouterMessage>()
@@ -254,16 +254,53 @@ class CopilotRepository @Inject constructor(
                         var aid = args.get("assignment_id")?.asLong ?: 0L
                         val assignmentNameQuery = args.get("assignment_name")?.asString?.trim()
 
+                        // Helper to match assignment by query including abbreviations and week numbers (e.g. "laboratorio 2", "entregable 2" -> S02, S2)
+                        fun findMatchingAssignment(assignments: List<com.notivas.data.model.Assignment>, query: String): com.notivas.data.model.Assignment? {
+                            // 1. Direct contains (case insensitive)
+                            assignments.find { it.name.contains(query, ignoreCase = true) }?.let { return it }
+
+                            // 2. Extract digits (e.g., "2" from "laboratorio/entregable 2" or "semana 2")
+                            val digitMatch = Regex("(?i)(?:laboratorio|entregable|semana|s|lab|sesion|sesión|ptal|teo)[\\s/_-]*0*(\\d+)").find(query)
+                                ?: Regex("\\b(\\d+)\\b").find(query)
+                            val number = digitMatch?.groupValues?.get(1)
+
+                            if (number != null) {
+                                val padded = number.padStart(2, '0') // "02"
+                                val patterns = listOf("S$number", "S$padded", "Semana $number", "Semana $padded", "Lab $number", "Laboratorio $number")
+                                // Search with week/lab patterns
+                                assignments.find { a ->
+                                    patterns.any { p -> a.name.contains(p, ignoreCase = true) }
+                                }?.let { return it }
+                            }
+
+                            // 3. Keyword matching
+                            val keywords = query.lowercase()
+                                .replace(Regex("[/_,\\-\\.:]"), " ")
+                                .split(" ")
+                                .filter { it.length > 1 && it !in listOf("en", "el", "la", "de", "del", "los", "las", "un", "una", "por", "que", "para") }
+                            if (keywords.isNotEmpty()) {
+                                assignments.find { a ->
+                                    val aName = a.name.lowercase()
+                                    keywords.all { kw -> aName.contains(kw) }
+                                }?.let { return it }
+
+                                // At least significant keyword match
+                                assignments.maxByOrNull { a ->
+                                    val aName = a.name.lowercase()
+                                    keywords.count { kw -> aName.contains(kw) }
+                                }?.takeIf { a ->
+                                    val aName = a.name.lowercase()
+                                    keywords.count { kw -> aName.contains(kw) } >= 2
+                                }?.let { return it }
+                            }
+
+                            return null
+                        }
+
                         // If aid not provided or 0, search for it locally or by name
                         if (aid == 0L && !assignmentNameQuery.isNullOrBlank()) {
                             val courseAssignments = assignmentDao.getAssignmentsForCourseOnce(cid)
-                            val matched = courseAssignments.find {
-                                it.name.contains(assignmentNameQuery, ignoreCase = true)
-                            } ?: courseAssignments.find {
-                                // Try matching keywords (e.g. "Laboratorio 4" -> ["laboratorio", "4"])
-                                val keywords = assignmentNameQuery.lowercase().split(" ")
-                                keywords.all { kw -> it.name.lowercase().contains(kw) }
-                            }
+                            val matched = findMatchingAssignment(courseAssignments, assignmentNameQuery)
                             if (matched != null) {
                                 aid = matched.id
                             }
@@ -273,12 +310,7 @@ class CopilotRepository @Inject constructor(
                         var resolvedCid = cid
                         if (aid == 0L && !assignmentNameQuery.isNullOrBlank()) {
                             val allAssignments = assignmentDao.getAssignmentList()
-                            val matched = allAssignments.find {
-                                it.name.contains(assignmentNameQuery, ignoreCase = true)
-                            } ?: allAssignments.find {
-                                val keywords = assignmentNameQuery.lowercase().split(" ").filter { k -> k.length > 1 }
-                                keywords.isNotEmpty() && keywords.all { kw -> it.name.lowercase().contains(kw) }
-                            }
+                            val matched = findMatchingAssignment(allAssignments, assignmentNameQuery)
                             if (matched != null) {
                                 aid = matched.id
                                 resolvedCid = matched.courseId
