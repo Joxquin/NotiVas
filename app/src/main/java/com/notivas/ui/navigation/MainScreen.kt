@@ -1,7 +1,21 @@
 package com.notivas.ui.navigation
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,6 +33,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -90,7 +105,26 @@ fun MainScreen(onLogout: () -> Unit) {
                         else -> "NotiVas"
                     }
                 TopAppBar(
-                    title = { Text(title, fontWeight = FontWeight.Bold) },
+                    title = {
+                        AnimatedContent(
+                            targetState = title,
+                            transitionSpec = {
+                                (fadeIn(animationSpec = tween(220, delayMillis = 60)) +
+                                        slideInVertically(
+                                            animationSpec = tween(220, delayMillis = 60),
+                                            initialOffsetY = { fullHeight -> fullHeight / 3 }
+                                        )) togetherWith
+                                        (fadeOut(animationSpec = tween(120)) +
+                                                slideOutVertically(
+                                                    animationSpec = tween(120),
+                                                    targetOffsetY = { fullHeight -> -fullHeight / 3 }
+                                                ))
+                            },
+                            label = "TopAppBarTitleTransition"
+                        ) { targetTitle ->
+                            Text(targetTitle, fontWeight = FontWeight.Bold)
+                        }
+                    },
                     colors =
                         TopAppBarDefaults.topAppBarColors(
                             containerColor = topAppBarContainerColor,
@@ -120,6 +154,16 @@ fun MainScreen(onLogout: () -> Unit) {
                             currentDestination?.hierarchy?.any {
                                 it.route == screen.route
                             } == true
+
+                        val iconScale by animateFloatAsState(
+                            targetValue = if (selected) 1.15f else 1.0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            label = "navItemScale_${screen.route}"
+                        )
+
                         NavigationBarItem(
                             icon = {
                                 val icon =
@@ -144,7 +188,14 @@ fun MainScreen(onLogout: () -> Unit) {
                                             if (selected) Icons.Filled.Dashboard
                                             else Icons.Outlined.Dashboard
                                     }
-                                Icon(imageVector = icon, contentDescription = null)
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.graphicsLayer(
+                                        scaleX = iconScale,
+                                        scaleY = iconScale
+                                    )
+                                )
                             },
                             label = {
                                 val label =
@@ -204,7 +255,67 @@ fun MainScreen(onLogout: () -> Unit) {
                     Modifier.fillMaxSize()
                 } else {
                     Modifier.padding(innerPadding)
+                },
+            enterTransition = {
+                if (targetState.destination.route == Screen.Simulador.route) {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> fullWidth },
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + fadeIn(animationSpec = tween(300))
+                } else {
+                    fadeIn(
+                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.94f,
+                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                    )
                 }
+            },
+            exitTransition = {
+                if (targetState.destination.route == Screen.Simulador.route) {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -fullWidth / 4 },
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + fadeOut(animationSpec = tween(150))
+                } else {
+                    fadeOut(
+                        animationSpec = tween(150, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.96f,
+                        animationSpec = tween(150, easing = FastOutSlowInEasing)
+                    )
+                }
+            },
+            popEnterTransition = {
+                if (initialState.destination.route == Screen.Simulador.route) {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> -fullWidth / 4 },
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + fadeIn(animationSpec = tween(300))
+                } else {
+                    fadeIn(
+                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.94f,
+                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                    )
+                }
+            },
+            popExitTransition = {
+                if (initialState.destination.route == Screen.Simulador.route) {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> fullWidth },
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + fadeOut(animationSpec = tween(150))
+                } else {
+                    fadeOut(
+                        animationSpec = tween(150, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.96f,
+                        animationSpec = tween(150, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
         ) {
             composable(Screen.Dashboard.route) {
                 val userProfile by dashboardViewModel.userProfile.collectAsState()
