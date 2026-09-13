@@ -18,7 +18,12 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import android.widget.Toast
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -507,18 +512,23 @@ private fun CopilotMessageBubble(message: CopilotMessageItem) {
                 } else null,
                 modifier = Modifier.wrapContentSize()
             ) {
+                val clipboardManager = LocalClipboardManager.current
+                val context = LocalContext.current
+
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = message.text,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = 20.sp
-                        ),
-                        color = if (isUser) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = message.text,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                lineHeight = 20.sp
+                            ),
+                            color = if (isUser) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    }
 
                     // Action feedback badge (e.g. Simulation group created)
                     if (!message.actionFeedback.isNullOrBlank()) {
@@ -553,6 +563,45 @@ private fun CopilotMessageBubble(message: CopilotMessageItem) {
                     if (message.sources.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(10.dp))
                         SourcesAccordion(sources = message.sources)
+                    }
+
+                    // Quick copy button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isUser) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.clickable {
+                                clipboardManager.setText(AnnotatedString(message.text))
+                                Toast.makeText(context, "Copiado al portapapeles", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "Copiar",
+                                    tint = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "Copiar",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                    color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
