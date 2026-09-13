@@ -42,7 +42,7 @@ import com.notivas.ui.onboarding.TokenInputScreen
 import com.notivas.ui.onboarding.UniversityInputScreen
 import com.notivas.ui.onboarding.VerificationScreen
 import com.notivas.ui.theme.NotiVasTheme
-import com.notivas.util.BiometricHelper
+import com.notivas.security.BiometricHelper
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

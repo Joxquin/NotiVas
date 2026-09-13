@@ -751,7 +751,7 @@ private fun SecuritySection(
                     checked = biometricLock,
                     onCheckedChange = { desiredState ->
                         if (activity != null &&
-                            com.notivas.util.BiometricHelper
+                            com.notivas.security.BiometricHelper
                                 .canAuthenticate(activity)
                         ) {
                             val actionTitle =
@@ -764,7 +764,7 @@ private fun SecuritySection(
                                 else
                                     "Confirma tu identidad para desactivar el bloqueo"
 
-                            com.notivas.util.BiometricHelper
+                            com.notivas.security.BiometricHelper
                                 .authenticate(
                                     activity = activity,
                                     title = actionTitle,

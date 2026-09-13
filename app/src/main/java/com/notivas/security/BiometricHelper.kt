@@ -1,4 +1,4 @@
-package com.notivas.util
+package com.notivas.security
 
 import android.content.Context
 import androidx.biometric.BiometricManager
