@@ -245,6 +245,7 @@ class CopilotRepository @Inject constructor(
             append("   b) Inmediatamente llama a 'fetch_discussion_details' (o 'fetch_module_item_content') para leer el MENSAJE/CONSIGNA COMPLETA del docente en dicho foro. ")
             append("   c) Responde explicando con claridad: DE QUÉ TRATA exactamente el foro según las indicaciones del profesor, y CÓMO DEBE RESPONDERLO (estructura sugerida, puntos clave a responder, formato o argumentos a incluir). ¡NUNCA te limites a dar solo un link o decir 'entra para ver las indicaciones'! ")
             append("8. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
+            append("9. IMPORTANTE: Cuando ejecutes herramientas (tools) para consultar tareas, foros, notas o módulos, NUNCA termines tu respuesta con solo las llamadas a herramientas ni devuelvas un mensaje vacío. En el siguiente paso debes procesar la información obtenida y redactar tu respuesta final detallada, completa y lista para el estudiante. ")
             append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas sin repreguntar cosas que puedes deducir.")
         }
 

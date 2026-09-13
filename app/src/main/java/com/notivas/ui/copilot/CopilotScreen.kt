@@ -1004,7 +1004,36 @@ private fun CopilotInputBar(
 private fun formatMarkdown(text: String): AnnotatedString {
     val lines = text.split("\n")
     return buildAnnotatedString {
+        var inCodeBlock = false
+        val codeBlockLines = mutableListOf<String>()
+
         lines.forEachIndexed { index, line ->
+            if (line.trim().startsWith("```")) {
+                if (!inCodeBlock) {
+                    inCodeBlock = true
+                    codeBlockLines.clear()
+                } else {
+                    inCodeBlock = false
+                    // Render accumulated code block
+                    val codeContent = codeBlockLines.joinToString("\n")
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp,
+                            background = Color(0x33888888)
+                        )
+                    ) {
+                        append("  $codeContent  \n")
+                    }
+                }
+                return@forEachIndexed
+            }
+
+            if (inCodeBlock) {
+                codeBlockLines.add(line)
+                return@forEachIndexed
+            }
+
             var formattedLine = line
             var isHeader = false
 
@@ -1043,6 +1072,20 @@ private fun formatMarkdown(text: String): AnnotatedString {
 
             if (index < lines.size - 1) {
                 append("\n")
+            }
+        }
+
+        // Handle unclosed code block if any
+        if (inCodeBlock && codeBlockLines.isNotEmpty()) {
+            val codeContent = codeBlockLines.joinToString("\n")
+            withStyle(
+                SpanStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    background = Color(0x33888888)
+                )
+            ) {
+                append("  $codeContent  ")
             }
         }
     }
