@@ -104,6 +104,29 @@ class CopilotRepository @Inject constructor(
         ),
         OpenRouterTool(
             function = OpenRouterFunction(
+                name = "fetch_module_item_content",
+                description = "Consulta y lee el contenido detallado o texto completo de un recurso de módulo en Canvas LMS (por ejemplo una página de lectura, sistema de evaluación, temario, guía, enlace o archivo). Puedes buscar por nombre del recurso o proporcionar su id/url.",
+                parameters = OpenRouterParameters(
+                    properties = mapOf(
+                        "course_id" to OpenRouterProperty(
+                            type = "integer",
+                            description = "ID de Canvas del curso"
+                        ),
+                        "resource_name" to OpenRouterProperty(
+                            type = "string",
+                            description = "Título o nombre del recurso a leer (ej: 'Sistema de Evaluación', 'Silabo', 'Guía de laboratorio')"
+                        ),
+                        "page_url" to OpenRouterProperty(
+                            type = "string",
+                            description = "URL o slug de la página en Canvas si se conoce (opcional)"
+                        )
+                    ),
+                    required = listOf("course_id", "resource_name")
+                )
+            )
+        ),
+        OpenRouterTool(
+            function = OpenRouterFunction(
                 name = "create_simulation_group",
                 description = "Crea un nuevo grupo de evaluación ponderado en el Simulador de Notas local de NotiVas (ejemplo: 'Laboratorios', 'Exámenes', 'Trabajo Final').",
                 parameters = OpenRouterParameters(
@@ -161,8 +184,9 @@ class CopilotRepository @Inject constructor(
             append("   a) Consulta 'fetch_canvas_assignment_details' para obtener la entrega del alumno ('student_submission'), los comentarios del docente ('teacher_comments') y la evaluación por rúbrica ('rubric_assessment'). ")
             append("   b) Cita textualmente la retroalimentación y comentarios que haya dejado el docente. ")
             append("   c) Compara los puntos obtenidos en cada criterio de la rúbrica ('student_points_obtained' vs 'points') e indica con exactitud en qué criterios perdió puntos o qué comentarios específicos dejó el profesor en cada criterio. ")
-            append("5. Si te preguntan por módulos, lecturas, enlaces, diapositivas o recursos subidos por el profesor (o si se menciona un recurso de módulo como @[Curso > Módulo: Recurso]): ")
-            append("   Usa la herramienta 'get_course_modules' para listar los módulos y el contenido o material disponible en Canvas LMS para ese curso y responder detalladamente qué recursos hay o cómo encontrarlos. ")
+            append("5. Si te preguntan por módulos, lecturas, enlaces, diapositivas o recursos subidos por el profesor (o si se menciona un recurso de módulo como @[Curso > Módulo: Recurso] o te piden 'explícame' / 'detállame como se evaluará' / etc.): ")
+            append("   a) Si necesitas ver la lista de módulos y qué recursos hay, llama a 'get_course_modules'. ")
+            append("   b) Si el usuario menciona un recurso específico o pide que le expliques o detalles su contenido (por ejemplo 'Sistema de Evaluación', 'Guía', 'Lectura S1', 'Temario'): DEBES llamar a 'fetch_module_item_content' pasando el course_id y el resource_name. ¡NUNCA le digas que no puedes leer la página o que solo ves el título! Usa 'fetch_module_item_content' para obtener el texto completo, HTML limpio o enlace del recurso y explicarle detalladamente su contenido al estudiante. ")
             append("6. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
             append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas sin repreguntar cosas que puedes deducir.")
         }
@@ -502,6 +526,187 @@ class CopilotRepository @Inject constructor(
                             }
                         } else {
                             gson.toJson(mapOf("error" to "No hay token o course_id no válido."))
+                        }
+                    }
+
+                    "fetch_module_item_content" -> {
+                        val cid = args.get("course_id")?.asLong ?: selectedCourseId ?: 0L
+                        val resourceNameQuery = args.get("resource_name")?.asString?.trim() ?: ""
+                        val explicitPageUrl = args.get("page_url")?.asString?.trim()
+                        val rawToken = preferencesManager.accessToken.first()
+
+                        if (!rawToken.isNullOrBlank() && cid != 0L) {
+                            try {
+                                val courseName = courses.find { it.id == cid }?.name ?: "Curso $cid"
+                                val token = "Bearer $rawToken"
+
+                                // If explicit page_url provided, fetch page directly
+                                if (!explicitPageUrl.isNullOrBlank()) {
+                                    val pageDetail = canvasApiService.getPageDetails(token, cid, explicitPageUrl)
+                                    val cleanBody = pageDetail.body?.let { cleanHtml(it) } ?: "Sin contenido textual disponible"
+                                    sourcesConsulted.add(
+                                        CopilotSource(
+                                            title = "${pageDetail.title ?: resourceNameQuery} ($courseName)",
+                                            detail = "Página de Canvas LMS leída"
+                                        )
+                                    )
+                                    gson.toJson(
+                                        mapOf(
+                                            "title" to pageDetail.title,
+                                            "url" to pageDetail.url,
+                                            "content" to cleanBody.take(4000)
+                                        )
+                                    )
+                                } else {
+                                    // 1. Fetch modules to find matching item by resourceNameQuery
+                                    val modules = canvasApiService.getModulesWithItems(token, cid)
+                                    var foundItem: com.notivas.data.model.CanvasModuleItem? = null
+                                    var foundModule: com.notivas.data.model.CanvasModule? = null
+
+                                    for (mod in modules) {
+                                        val items = mod.items ?: continue
+                                        val match = items.find { it.title.contains(resourceNameQuery, ignoreCase = true) }
+                                            ?: items.find { resourceNameQuery.contains(it.title, ignoreCase = true) }
+                                            ?: items.find { item ->
+                                                val qWords = resourceNameQuery.lowercase().split(" ").filter { it.length > 2 }
+                                                qWords.isNotEmpty() && qWords.all { item.title.lowercase().contains(it) }
+                                            }
+                                        if (match != null) {
+                                            foundItem = match
+                                            foundModule = mod
+                                            break
+                                        }
+                                    }
+
+                                    if (foundItem != null) {
+                                        when (foundItem.type.lowercase()) {
+                                            "page" -> {
+                                                val pageSlug = foundItem.pageUrl
+                                                    ?: foundItem.url?.substringAfterLast("/pages/")
+                                                    ?: foundItem.title.lowercase().replace(" ", "-")
+                                                val pageDetail = canvasApiService.getPageDetails(token, cid, pageSlug)
+                                                val cleanBody = pageDetail.body?.let { cleanHtml(it) } ?: "Sin contenido de texto"
+                                                sourcesConsulted.add(
+                                                    CopilotSource(
+                                                        title = "${pageDetail.title ?: foundItem.title} ($courseName)",
+                                                        detail = "Página de módulo '${foundModule?.name}'"
+                                                    )
+                                                )
+                                                gson.toJson(
+                                                    mapOf(
+                                                        "module" to foundModule?.name,
+                                                        "title" to (pageDetail.title ?: foundItem.title),
+                                                        "type" to "Page",
+                                                        "content" to cleanBody.take(4000)
+                                                    )
+                                                )
+                                            }
+                                            "file" -> {
+                                                val fileId = foundItem.contentId ?: foundItem.id
+                                                val fileDetail = try {
+                                                    canvasApiService.getFileDetails(token, cid, fileId)
+                                                } catch (e: Exception) {
+                                                    null
+                                                }
+                                                sourcesConsulted.add(
+                                                    CopilotSource(
+                                                        title = "${foundItem.title} ($courseName)",
+                                                        detail = "Archivo subido por el profesor en módulo '${foundModule?.name}'"
+                                                    )
+                                                )
+                                                gson.toJson(
+                                                    mapOf(
+                                                        "module" to foundModule?.name,
+                                                        "title" to foundItem.title,
+                                                        "type" to "File",
+                                                        "download_url" to (fileDetail?.url ?: foundItem.url ?: foundItem.htmlUrl),
+                                                        "filename" to (fileDetail?.displayName ?: foundItem.title),
+                                                        "size" to fileDetail?.size
+                                                    )
+                                                )
+                                            }
+                                            "assignment" -> {
+                                                val aid = foundItem.contentId ?: foundItem.id
+                                                val assignDetail = try {
+                                                    canvasApiService.getAssignmentDetails(token, cid, aid)
+                                                } catch (e: Exception) {
+                                                    null
+                                                }
+                                                val cleanDesc = assignDetail?.description?.let { cleanHtml(it) }
+                                                sourcesConsulted.add(
+                                                    CopilotSource(
+                                                        title = "${foundItem.title} ($courseName)",
+                                                        detail = "Tarea en módulo '${foundModule?.name}'"
+                                                    )
+                                                )
+                                                gson.toJson(
+                                                    mapOf(
+                                                        "module" to foundModule?.name,
+                                                        "title" to foundItem.title,
+                                                        "type" to "Assignment",
+                                                        "description" to cleanDesc?.take(2000),
+                                                        "due_at" to assignDetail?.dueAt,
+                                                        "points_possible" to assignDetail?.pointsPossible
+                                                    )
+                                                )
+                                            }
+                                            else -> {
+                                                sourcesConsulted.add(
+                                                    CopilotSource(
+                                                        title = "${foundItem.title} ($courseName)",
+                                                        detail = "Recurso (${foundItem.type}) en módulo '${foundModule?.name}'"
+                                                    )
+                                                )
+                                                gson.toJson(
+                                                    mapOf(
+                                                        "module" to foundModule?.name,
+                                                        "title" to foundItem.title,
+                                                        "type" to foundItem.type,
+                                                        "html_url" to foundItem.htmlUrl,
+                                                        "url" to foundItem.url
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        // Not found in modules, try looking for a page directly by title
+                                        val slug = resourceNameQuery.lowercase()
+                                            .replace(Regex("[^a-z0-9\\s-]"), "")
+                                            .trim()
+                                            .replace(Regex("\\s+"), "-")
+                                        try {
+                                            val pageDetail = canvasApiService.getPageDetails(token, cid, slug)
+                                            val cleanBody = pageDetail.body?.let { cleanHtml(it) } ?: "Sin contenido"
+                                            sourcesConsulted.add(
+                                                CopilotSource(
+                                                    title = "${pageDetail.title ?: resourceNameQuery} ($courseName)",
+                                                    detail = "Página de Canvas LMS leída"
+                                                )
+                                            )
+                                            gson.toJson(
+                                                mapOf(
+                                                    "title" to pageDetail.title,
+                                                    "type" to "Page",
+                                                    "content" to cleanBody.take(4000)
+                                                )
+                                            )
+                                        } catch (e: Exception) {
+                                            gson.toJson(
+                                                mapOf(
+                                                    "error" to "No se encontró el recurso o página con nombre '$resourceNameQuery' en el curso.",
+                                                    "recursos_disponibles" to modules.map { m ->
+                                                        mapOf("modulo" to m.name, "items" to m.items?.map { it.title })
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                gson.toJson(mapOf("error" to "Error al consultar el contenido en Canvas: ${e.message}"))
+                            }
+                        } else {
+                            gson.toJson(mapOf("error" to "No hay token de Canvas configurado o curso no especificado."))
                         }
                     }
 

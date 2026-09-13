@@ -76,6 +76,20 @@ interface CanvasApiService {
         @Query("include[]") include: List<String> = listOf("items"),
         @Query("per_page") perPage: Int = 50
     ): List<com.notivas.data.model.CanvasModule>
+
+    @GET("api/v1/courses/{courseId}/pages/{pageUrl}")
+    suspend fun getPageDetails(
+        @Header("Authorization") token: String,
+        @Path("courseId") courseId: Long,
+        @Path("pageUrl") pageUrl: String
+    ): com.notivas.data.model.CanvasPageDetail
+
+    @GET("api/v1/courses/{courseId}/files/{fileId}")
+    suspend fun getFileDetails(
+        @Header("Authorization") token: String,
+        @Path("courseId") courseId: Long,
+        @Path("fileId") fileId: Long
+    ): com.notivas.data.model.CanvasFileDetail
 }
 
 

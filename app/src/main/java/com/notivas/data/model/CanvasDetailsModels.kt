@@ -67,7 +67,23 @@ data class CanvasModuleItem(
     @SerializedName("type") val type: String, // "File", "Page", "Discussion", "Assignment", "ExternalUrl", "Quiz"
     @SerializedName("html_url") val htmlUrl: String? = null,
     @SerializedName("url") val url: String? = null,
+    @SerializedName("page_url") val pageUrl: String? = null,
     @SerializedName("content_id") val contentId: Long? = null
+)
+
+data class CanvasPageDetail(
+    @SerializedName("url") val url: String? = null,
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("body") val body: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
+)
+
+data class CanvasFileDetail(
+    @SerializedName("id") val id: Long? = null,
+    @SerializedName("display_name") val displayName: String? = null,
+    @SerializedName("url") val url: String? = null,
+    @SerializedName("content-type") val contentType: String? = null,
+    @SerializedName("size") val size: Long? = null
 )
 
 
