@@ -163,7 +163,7 @@ class CopilotRepository @Inject constructor(
 
             if (!response.isSuccessful) {
                 val errBody = response.errorBody()?.string() ?: "Error de conexión"
-                return Result.failure(Exception("Error OpenRouter (${response.code()}): $errBody"))
+                return Result.failure(Exception(formatOpenRouterError(response.code(), errBody)))
             }
 
             val chatResponse = response.body()
@@ -323,7 +323,7 @@ class CopilotRepository @Inject constructor(
 
             if (!followUpResponse.isSuccessful) {
                 val err = followUpResponse.errorBody()?.string() ?: "Error procesando resultados"
-                return Result.failure(Exception("Error en respuesta final (${followUpResponse.code()}): $err"))
+                return Result.failure(Exception(formatOpenRouterError(followUpResponse.code(), err)))
             }
 
             val finalReply = followUpResponse.body()?.choices?.firstOrNull()?.message?.content
@@ -340,6 +340,26 @@ class CopilotRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e("CopilotRepository", "Error executing copilot request", e)
             return Result.failure(e)
+        }
+    }
+
+    private fun formatOpenRouterError(code: Int, rawBody: String): String {
+        return try {
+            val json = gson.fromJson(rawBody, JsonObject::class.java)
+            val errorObj = json.getAsJsonObject("error")
+            val message = errorObj?.get("message")?.asString
+            if (code == 402) {
+                "Saldo insuficiente o límite de tokens excedido en tu cuenta de OpenRouter. Puedes recargar saldo en openrouter.ai/settings/credits o cambiar a un modelo gratuito en tu Perfil."
+            } else if (code == 401) {
+                "API Key de OpenRouter inválida o expirada. Por favor, verifícala en tu Perfil."
+            } else if (!message.isNullOrBlank()) {
+                message
+            } else {
+                "Error OpenRouter ($code)"
+            }
+        } catch (e: Exception) {
+            if (code == 402) "Saldo insuficiente en OpenRouter. Recarga saldo o usa un modelo gratuito."
+            else "Error de conexión con el proveedor de IA ($code)"
         }
     }
 

@@ -856,10 +856,11 @@ private fun CopilotSettingsSection(
 
     val popularModels = remember {
         listOf(
-            "google/gemini-2.5-flash" to "Gemini 2.5 Flash (Rápido y Recomendado)",
+            "google/gemini-2.5-flash" to "Gemini 2.5 Flash (Recomendado)",
+            "google/gemini-2.0-flash-exp:free" to "Gemini 2.0 Flash (Gratis en OpenRouter)",
+            "meta-llama/llama-3.3-70b-instruct:free" to "Llama 3.3 70B (Gratis en OpenRouter)",
             "anthropic/claude-3.5-haiku" to "Claude 3.5 Haiku (Alta precisión)",
-            "openai/gpt-4o-mini" to "GPT-4o Mini (Equilibrado)",
-            "meta-llama/llama-3.3-70b-instruct" to "Llama 3.3 70B (Open Source)"
+            "openai/gpt-4o-mini" to "GPT-4o Mini (Equilibrado)"
         )
     }
 
