@@ -158,6 +158,44 @@ class CopilotRepository @Inject constructor(
                     required = listOf("course_id", "name", "weight_percentage")
                 )
             )
+        ),
+        OpenRouterTool(
+            function = OpenRouterFunction(
+                name = "get_course_discussions",
+                description = "Obtiene la lista de foros y debates (discussions) publicados en Canvas LMS para un curso por su course_id.",
+                parameters = OpenRouterParameters(
+                    properties = mapOf(
+                        "course_id" to OpenRouterProperty(
+                            type = "integer",
+                            description = "ID de Canvas del curso"
+                        )
+                    ),
+                    required = listOf("course_id")
+                )
+            )
+        ),
+        OpenRouterTool(
+            function = OpenRouterFunction(
+                name = "fetch_discussion_details",
+                description = "Obtiene las instrucciones completas, consigna, preguntas del profesor y detalles de un foro específico de Canvas LMS. Puedes buscar por topic_id o por nombre del foro.",
+                parameters = OpenRouterParameters(
+                    properties = mapOf(
+                        "course_id" to OpenRouterProperty(
+                            type = "integer",
+                            description = "ID de Canvas del curso"
+                        ),
+                        "topic_id" to OpenRouterProperty(
+                            type = "integer",
+                            description = "ID del foro/debate en Canvas (opcional si proporcionas topic_title)"
+                        ),
+                        "topic_title" to OpenRouterProperty(
+                            type = "string",
+                            description = "Título o parte del nombre del foro (ej: 'Foro IA', 'Sustentación')"
+                        )
+                    ),
+                    required = listOf("course_id")
+                )
+            )
         )
     )
 
@@ -193,7 +231,7 @@ class CopilotRepository @Inject constructor(
             append("   c) Llama de inmediato a 'fetch_canvas_assignment_details' con el course_id y assignment_name o assignment_id de esa tarea para obtener la consigna completa en vivo de Canvas LMS y responder detalladamente. ¡NUNCA respondas con 'No se obtuvo respuesta final' ni digas que necesitas el ID! ")
             append("3. Si el mensaje del estudiante incluye etiquetas de mención como @[Curso > Tarea] o @[Curso > Módulo: Recurso] o @[   > Recurso]: ")
             append("   a) Extrae el nombre del recurso y del curso de la etiqueta. Si el curso no está especificado en la etiqueta, busca el curso correspondiente en tu lista de cursos inscritos. ")
-            append("   b) Si es una tarea o laboratorio, llama a 'fetch_canvas_assignment_details'. Si es un recurso o página de módulo, llama a 'fetch_module_item_content'. ")
+            append("   b) Si es una tarea o laboratorio, llama a 'fetch_canvas_assignment_details'. Si es un recurso, página o foro de módulo, llama a 'fetch_module_item_content' o 'fetch_discussion_details'. ")
             append("4. Si obtienes los detalles de la consigna o rúbrica, explica clara y resumidamente: objetivo de la entrega, qué debe presentar el estudiante, procedimientos, formato (ej. PDF, individual/grupal), medio de entrega y fecha límite con hora si la tiene. ")
             append("5. Si el estudiante pregunta por qué obtuvo cierta calificación, por qué tuvo X nota (ej: '¿por qué tuve 15 en tal tarea?'): ")
             append("   a) Consulta 'fetch_canvas_assignment_details' para obtener la entrega del alumno ('student_submission'), los comentarios del docente ('teacher_comments') y la evaluación por rúbrica ('rubric_assessment'). ")
@@ -202,7 +240,11 @@ class CopilotRepository @Inject constructor(
             append("6. Si te preguntan por módulos, lecturas, enlaces, diapositivas o recursos subidos por el profesor: ")
             append("   a) Si necesitas ver la lista de módulos y qué recursos hay, llama a 'get_course_modules'. ")
             append("   b) Si el usuario menciona un recurso específico o pide que le expliques o detalles su contenido (por ejemplo 'Sistema de Evaluación', 'Guía', 'Lectura S1', 'Temario'): DEBES llamar a 'fetch_module_item_content' pasando el course_id y el resource_name. ¡NUNCA le digas que no puedes leer la página o que solo ves el título! ")
-            append("7. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
+            append("7. Si el usuario pregunta por un FORO, debate o 'último foro' (ej: 'último foro de Móviles', 'de qué trata el foro y cómo lo respondo'): ")
+            append("   a) Si no conoces el foro o pide el 'último foro', primero llama a 'get_course_discussions' o 'get_course_modules' con el course_id para encontrar el foro más reciente o con la semana más alta. ")
+            append("   b) Inmediatamente llama a 'fetch_discussion_details' (o 'fetch_module_item_content') para leer el MENSAJE/CONSIGNA COMPLETA del docente en dicho foro. ")
+            append("   c) Responde explicando con claridad: DE QUÉ TRATA exactamente el foro según las indicaciones del profesor, y CÓMO DEBE RESPONDERLO (estructura sugerida, puntos clave a responder, formato o argumentos a incluir). ¡NUNCA te limites a dar solo un link o decir 'entra para ver las indicaciones'! ")
+            append("8. Si te piden crear grupos de notas para simulaciones, usa create_simulation_group. ")
             append("Sé siempre proactivo, empático, directo y resuelve las consultas por tu cuenta usando tus herramientas sin repreguntar cosas que puedes deducir.")
         }
 
@@ -684,6 +726,32 @@ class CopilotRepository @Inject constructor(
                                                     )
                                                 )
                                             }
+                                            "discussion" -> {
+                                                val topicId = foundItem.contentId ?: foundItem.id
+                                                val topicDetail = try {
+                                                    canvasApiService.getDiscussionTopic(token, cid, topicId)
+                                                } catch (e: Exception) {
+                                                    null
+                                                }
+                                                val cleanMessage = topicDetail?.message?.let { cleanHtml(it) } ?: "Sin mensaje"
+                                                sourcesConsulted.add(
+                                                    CopilotSource(
+                                                        title = "Foro: ${foundItem.title} ($courseName)",
+                                                        detail = "Foro/Debate de Canvas en '${foundModule?.name}'"
+                                                    )
+                                                )
+                                                gson.toJson(
+                                                    mapOf(
+                                                        "module" to foundModule?.name,
+                                                        "title" to (topicDetail?.title ?: foundItem.title),
+                                                        "type" to "Discussion",
+                                                        "author" to topicDetail?.userName,
+                                                        "posted_at" to topicDetail?.postedAt,
+                                                        "message" to cleanMessage.take(4000),
+                                                        "url" to (topicDetail?.htmlUrl ?: foundItem.htmlUrl ?: foundItem.url)
+                                                    )
+                                                )
+                                            }
                                             else -> {
                                                 sourcesConsulted.add(
                                                     CopilotSource(
@@ -741,6 +809,94 @@ class CopilotRepository @Inject constructor(
                             }
                         } else {
                             gson.toJson(mapOf("error" to "No hay token de Canvas configurado o curso no especificado."))
+                        }
+                    }
+
+                    "get_course_discussions" -> {
+                        val cid = args.get("course_id")?.asLong ?: selectedCourseId ?: 0L
+                        val canvasToken = preferencesManager.accessToken.first()
+                        val courseName = courses.find { it.id == cid }?.name ?: "Curso $cid"
+
+                        if (!canvasToken.isNullOrBlank() && cid != 0L) {
+                            try {
+                                val token = "Bearer $canvasToken"
+                                val discussions = canvasApiService.getDiscussionTopics(token, cid)
+                                sourcesConsulted.add(
+                                    CopilotSource(
+                                        title = "Foros y debates de $courseName",
+                                        detail = "${discussions.size} foros registrados en Canvas"
+                                    )
+                                )
+                                val simplified = discussions.map {
+                                    val cleanMsg = it.message?.let { m -> cleanHtml(m) } ?: ""
+                                    mapOf(
+                                        "id" to it.id,
+                                        "title" to it.title,
+                                        "author" to it.userName,
+                                        "posted_at" to it.postedAt,
+                                        "subentry_count" to it.discussionSubentryCount,
+                                        "message_preview" to cleanMsg.take(200)
+                                    )
+                                }
+                                gson.toJson(simplified)
+                            } catch (e: Exception) {
+                                gson.toJson(mapOf("error" to "Error al obtener foros: ${e.message}"))
+                            }
+                        } else {
+                            gson.toJson(mapOf("error" to "No hay token de Canvas o curso no seleccionado."))
+                        }
+                    }
+
+                    "fetch_discussion_details" -> {
+                        val cid = args.get("course_id")?.asLong ?: selectedCourseId ?: 0L
+                        var topicId = args.get("topic_id")?.asLong ?: 0L
+                        val topicTitleQuery = args.get("topic_title")?.asString?.trim() ?: ""
+                        val canvasToken = preferencesManager.accessToken.first()
+                        val courseName = courses.find { it.id == cid }?.name ?: "Curso $cid"
+
+                        if (!canvasToken.isNullOrBlank() && cid != 0L) {
+                            try {
+                                val token = "Bearer $canvasToken"
+                                if (topicId == 0L && topicTitleQuery.isNotBlank()) {
+                                    val allTopics = canvasApiService.getDiscussionTopics(token, cid)
+                                    val match = allTopics.find { it.title.contains(topicTitleQuery, ignoreCase = true) }
+                                        ?: allTopics.find { topicTitleQuery.contains(it.title, ignoreCase = true) }
+                                        ?: allTopics.find { t ->
+                                            val words = topicTitleQuery.lowercase().split(" ").filter { it.length > 2 }
+                                            words.isNotEmpty() && words.all { t.title.lowercase().contains(it) }
+                                        }
+                                    if (match != null) {
+                                        topicId = match.id
+                                    }
+                                }
+
+                                if (topicId != 0L) {
+                                    val topic = canvasApiService.getDiscussionTopic(token, cid, topicId)
+                                    val cleanMsg = topic.message?.let { cleanHtml(it) } ?: "Sin consigna o mensaje específico"
+                                    sourcesConsulted.add(
+                                        CopilotSource(
+                                            title = "Foro: ${topic.title} ($courseName)",
+                                            detail = "Instrucciones y consigna en vivo de Canvas LMS"
+                                        )
+                                    )
+                                    gson.toJson(
+                                        mapOf(
+                                            "id" to topic.id,
+                                            "title" to topic.title,
+                                            "author" to topic.userName,
+                                            "posted_at" to topic.postedAt,
+                                            "consigna_message" to cleanMsg.take(4000),
+                                            "url" to topic.htmlUrl
+                                        )
+                                    )
+                                } else {
+                                    gson.toJson(mapOf("error" to "No se encontró el foro '$topicTitleQuery' en $courseName"))
+                                }
+                            } catch (e: Exception) {
+                                gson.toJson(mapOf("error" to "Error al consultar foro: ${e.message}"))
+                            }
+                        } else {
+                            gson.toJson(mapOf("error" to "No hay token de Canvas o curso no seleccionado."))
                         }
                     }
 

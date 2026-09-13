@@ -90,6 +90,20 @@ interface CanvasApiService {
         @Path("courseId") courseId: Long,
         @Path("fileId") fileId: Long
     ): com.notivas.data.model.CanvasFileDetail
+
+    @GET("api/v1/courses/{courseId}/discussion_topics")
+    suspend fun getDiscussionTopics(
+        @Header("Authorization") token: String,
+        @Path("courseId") courseId: Long,
+        @Query("per_page") perPage: Int = 50
+    ): List<com.notivas.data.model.CanvasDiscussionTopic>
+
+    @GET("api/v1/courses/{courseId}/discussion_topics/{topicId}")
+    suspend fun getDiscussionTopic(
+        @Header("Authorization") token: String,
+        @Path("courseId") courseId: Long,
+        @Path("topicId") topicId: Long
+    ): com.notivas.data.model.CanvasDiscussionTopic
 }
 
 

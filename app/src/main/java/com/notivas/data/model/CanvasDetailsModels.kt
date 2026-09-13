@@ -86,4 +86,15 @@ data class CanvasFileDetail(
     @SerializedName("size") val size: Long? = null
 )
 
+data class CanvasDiscussionTopic(
+    @SerializedName("id") val id: Long,
+    @SerializedName("title") val title: String,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("html_url") val htmlUrl: String? = null,
+    @SerializedName("posted_at") val postedAt: String? = null,
+    @SerializedName("user_name") val userName: String? = null,
+    @SerializedName("discussion_type") val discussionType: String? = null,
+    @SerializedName("discussion_subentry_count") val discussionSubentryCount: Int? = null
+)
+
 
