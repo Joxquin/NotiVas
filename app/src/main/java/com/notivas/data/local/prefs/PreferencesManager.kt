@@ -31,6 +31,11 @@ class PreferencesManager @Inject constructor(
 
         // Security preference
         val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock")
+
+        // OpenRouter & AI Copilot preferences
+        val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
+        val OPENROUTER_MODEL = stringPreferencesKey("openrouter_model")
+        val COPILOT_ENABLED = booleanPreferencesKey("copilot_enabled")
     }
 
     val universityUrl: Flow<String?> = context.dataStore.data.map { it[UNIVERSITY_URL] }
@@ -41,6 +46,10 @@ class PreferencesManager @Inject constructor(
     val notif3h: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_3H] ?: true }
     val notif30m: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_30M] ?: false }
     val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: true }
+
+    val openRouterApiKey: Flow<String?> = context.dataStore.data.map { it[OPENROUTER_API_KEY] }
+    val openRouterModel: Flow<String> = context.dataStore.data.map { it[OPENROUTER_MODEL] ?: "google/gemini-2.5-flash" }
+    val copilotEnabled: Flow<Boolean> = context.dataStore.data.map { it[COPILOT_ENABLED] ?: false }
 
     suspend fun saveUniversityUrl(url: String) {
         context.dataStore.edit { it[UNIVERSITY_URL] = url }
@@ -68,6 +77,24 @@ class PreferencesManager @Inject constructor(
 
     suspend fun setBiometricLock(enabled: Boolean) {
         context.dataStore.edit { it[BIOMETRIC_LOCK] = enabled }
+    }
+
+    suspend fun setOpenRouterApiKey(apiKey: String?) {
+        context.dataStore.edit {
+            if (apiKey.isNullOrBlank()) {
+                it.remove(OPENROUTER_API_KEY)
+            } else {
+                it[OPENROUTER_API_KEY] = apiKey.trim()
+            }
+        }
+    }
+
+    suspend fun setOpenRouterModel(model: String) {
+        context.dataStore.edit { it[OPENROUTER_MODEL] = model.trim() }
+    }
+
+    suspend fun setCopilotEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[COPILOT_ENABLED] = enabled }
     }
 
     suspend fun clear() {

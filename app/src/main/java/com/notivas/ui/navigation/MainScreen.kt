@@ -446,6 +446,9 @@ fun MainScreen(onLogout: () -> Unit) {
                     onNotif30mChange = viewModel::setNotif30m,
                     onSyncIntervalChange = viewModel::setSyncInterval,
                     onBiometricLockChange = viewModel::setBiometricLock,
+                    onOpenRouterApiKeyChange = viewModel::setOpenRouterApiKey,
+                    onOpenRouterModelChange = viewModel::setOpenRouterModel,
+                    onCopilotEnabledChange = viewModel::setCopilotEnabled,
                     onLogout = viewModel::logout
                 )
             }

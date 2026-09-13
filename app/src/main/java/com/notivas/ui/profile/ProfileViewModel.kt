@@ -22,7 +22,10 @@ data class ProfileUiState(
     val notif3h: Boolean = true,
     val notif30m: Boolean = false,
     val syncIntervalMinutes: Long = 15L,
-    val biometricLock: Boolean = true
+    val biometricLock: Boolean = true,
+    val openRouterApiKey: String? = null,
+    val openRouterModel: String = "google/gemini-2.5-flash",
+    val copilotEnabled: Boolean = false
 )
 
 @HiltViewModel
@@ -36,40 +39,48 @@ class ProfileViewModel @Inject constructor(
     val isLoggedOut: StateFlow<Boolean> = _isLoggedOut.asStateFlow()
 
     val uiState: StateFlow<ProfileUiState> = combine(
-        _profile,
-        preferencesManager.universityUrl,
-        preferencesManager.notif24h,
-        preferencesManager.notif3h,
-        preferencesManager.notif30m,
-        preferencesManager.syncIntervalMinutes,
-        preferencesManager.biometricLock
-    ) { values ->
-        val profile = values[0] as UserProfile?
-        val url = values[1] as String?
-        val notif24h = values[2] as Boolean
-        val notif3h = values[3] as Boolean
-        val notif30m = values[4] as Boolean
-        val syncInterval = values[5] as Long
-        val biometricLock = values[6] as Boolean
-
-        val host = url?.let {
+        combine(
+            _profile,
+            preferencesManager.universityUrl,
+            preferencesManager.notif24h,
+            preferencesManager.notif3h,
+            preferencesManager.notif30m
+        ) { p, u, n24, n3, n30 ->
+            Tuple5(p, u, n24, n3, n30)
+        },
+        combine(
+            preferencesManager.syncIntervalMinutes,
+            preferencesManager.biometricLock,
+            preferencesManager.openRouterApiKey,
+            preferencesManager.openRouterModel,
+            preferencesManager.copilotEnabled
+        ) { sync, bio, key, model, copilot ->
+            Tuple5(sync, bio, key, model, copilot)
+        }
+    ) { (p, u, n24, n3, n30), (sync, bio, key, model, copilot) ->
+        val host = u?.let {
             it.removePrefix("https://").removePrefix("http://").trimEnd('/')
         } ?: "Canvas LMS"
 
         ProfileUiState(
-            profile = profile,
+            profile = p,
             universityHost = host,
-            notif24h = notif24h,
-            notif3h = notif3h,
-            notif30m = notif30m,
-            syncIntervalMinutes = syncInterval,
-            biometricLock = biometricLock
+            notif24h = n24,
+            notif3h = n3,
+            notif30m = n30,
+            syncIntervalMinutes = sync,
+            biometricLock = bio,
+            openRouterApiKey = key,
+            openRouterModel = model,
+            copilotEnabled = copilot
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ProfileUiState()
     )
+
+    private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 
     init {
         fetchProfile()
@@ -112,6 +123,24 @@ class ProfileViewModel @Inject constructor(
     fun setBiometricLock(enabled: Boolean) {
         viewModelScope.launch {
             preferencesManager.setBiometricLock(enabled)
+        }
+    }
+
+    fun setOpenRouterApiKey(apiKey: String?) {
+        viewModelScope.launch {
+            preferencesManager.setOpenRouterApiKey(apiKey)
+        }
+    }
+
+    fun setOpenRouterModel(model: String) {
+        viewModelScope.launch {
+            preferencesManager.setOpenRouterModel(model)
+        }
+    }
+
+    fun setCopilotEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setCopilotEnabled(enabled)
         }
     }
 
