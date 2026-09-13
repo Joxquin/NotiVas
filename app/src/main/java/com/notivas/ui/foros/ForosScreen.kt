@@ -37,7 +37,7 @@ fun ForosScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(
-                        if (isRefreshing) 80.dp 
+                        if (isRefreshing) 80.dp
                         else (80.dp * pullDistance).coerceAtMost(100.dp)
                     )
                     .graphicsLayer {
@@ -101,13 +101,16 @@ fun ForumCard(forum: PlannerItem) {
                 fontWeight = FontWeight.ExtraBold
             )
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             val dateText = forum.plannableDate?.let {
                 try {
-                    val date = java.time.ZonedDateTime.parse(it).withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
+                    val date =
+                        java.time.ZonedDateTime.parse(it).withZoneSameInstant(java.time.ZoneId.of("America/Lima"))
                     val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a")
                     date.format(formatter)
-                } catch (e: Exception) { it }
+                } catch (e: Exception) {
+                    it
+                }
             } ?: "Sin fecha"
 
             Text(

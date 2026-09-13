@@ -47,7 +47,7 @@ class OnboardingViewModel @Inject constructor(
                         _verificationSuccess.value = true
                     } catch (e: Exception) {
                         // Success in connection but failed to fetch initial data
-                        _verificationSuccess.value = true 
+                        _verificationSuccess.value = true
                     }
                 } else {
                     _verificationSuccess.value = false

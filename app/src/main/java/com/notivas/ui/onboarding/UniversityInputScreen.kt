@@ -36,7 +36,7 @@ fun UniversityInputScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         OutlinedTextField(
             value = url,
             onValueChange = onUrlChange,
@@ -45,9 +45,9 @@ fun UniversityInputScreen(
             shape = MaterialTheme.shapes.large,
             singleLine = true
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Button(
             onClick = onNext,
             modifier = Modifier.fillMaxWidth(),

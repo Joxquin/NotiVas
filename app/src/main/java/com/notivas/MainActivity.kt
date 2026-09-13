@@ -61,15 +61,15 @@ class MainActivity : FragmentActivity() {
         setContent {
             val context = LocalContext.current
             val permissionLauncher =
-                    rememberLauncherForActivityResult(
-                            ActivityResultContracts.RequestPermission()
-                    ) { _ -> }
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission()
+                ) { _ -> }
 
             LaunchedEffect(Unit) {
                 if (ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.POST_NOTIFICATIONS
-                        ) != PackageManager.PERMISSION_GRANTED
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
                 ) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
@@ -82,105 +82,105 @@ class MainActivity : FragmentActivity() {
             LaunchedEffect(isBiometricLocked) {
                 if (isBiometricLocked && BiometricHelper.canAuthenticate(this@MainActivity)) {
                     BiometricHelper.authenticate(
-                            activity = this@MainActivity,
-                            title = "NotiVas Academic",
-                            subtitle = "Verifica tu identidad para desbloquear tu sesión",
-                            onSuccess = { mainViewModel.unlockApp() }
+                        activity = this@MainActivity,
+                        title = "NotiVas Academic",
+                        subtitle = "Verifica tu identidad para desbloquear tu sesión",
+                        onSuccess = { mainViewModel.unlockApp() }
                     )
                 }
             }
 
             NotiVasTheme {
                 Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     if (startDestination != null) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             val rootNavController = rememberNavController()
 
                             NavHost(
-                                    navController = rootNavController,
-                                    startDestination = startDestination!!
+                                navController = rootNavController,
+                                startDestination = startDestination!!
                             ) {
                                 navigation(
-                                        startDestination = Screen.UniversityInput.route,
-                                        route = "onboarding_flow"
+                                    startDestination = Screen.UniversityInput.route,
+                                    route = "onboarding_flow"
                                 ) {
                                     composable(Screen.UniversityInput.route) {
                                         val entry =
-                                                remember(it) {
-                                                    rootNavController.getBackStackEntry(
-                                                            "onboarding_flow"
-                                                    )
-                                                }
+                                            remember(it) {
+                                                rootNavController.getBackStackEntry(
+                                                    "onboarding_flow"
+                                                )
+                                            }
                                         val viewModel: OnboardingViewModel = hiltViewModel(entry)
                                         val url by viewModel.universityUrl.collectAsState()
                                         UniversityInputScreen(
-                                                url = url,
-                                                onUrlChange = viewModel::updateUniversityUrl,
-                                                onNext = {
-                                                    rootNavController.navigate(
-                                                            Screen.TokenInput.route
-                                                    )
-                                                }
+                                            url = url,
+                                            onUrlChange = viewModel::updateUniversityUrl,
+                                            onNext = {
+                                                rootNavController.navigate(
+                                                    Screen.TokenInput.route
+                                                )
+                                            }
                                         )
                                     }
                                     composable(Screen.TokenInput.route) {
                                         val entry =
-                                                remember(it) {
-                                                    rootNavController.getBackStackEntry(
-                                                            "onboarding_flow"
-                                                    )
-                                                }
+                                            remember(it) {
+                                                rootNavController.getBackStackEntry(
+                                                    "onboarding_flow"
+                                                )
+                                            }
                                         val viewModel: OnboardingViewModel = hiltViewModel(entry)
                                         val token by viewModel.accessToken.collectAsState()
                                         TokenInputScreen(
-                                                token = token,
-                                                onTokenChange = viewModel::updateAccessToken,
-                                                onNext = {
-                                                    viewModel.verifyConnection()
-                                                    rootNavController.navigate(
-                                                            Screen.Verification.route
-                                                    )
-                                                },
-                                                onBack = { rootNavController.popBackStack() }
+                                            token = token,
+                                            onTokenChange = viewModel::updateAccessToken,
+                                            onNext = {
+                                                viewModel.verifyConnection()
+                                                rootNavController.navigate(
+                                                    Screen.Verification.route
+                                                )
+                                            },
+                                            onBack = { rootNavController.popBackStack() }
                                         )
                                     }
                                     composable(Screen.Verification.route) {
                                         val entry =
-                                                remember(it) {
-                                                    rootNavController.getBackStackEntry(
-                                                            "onboarding_flow"
-                                                    )
-                                                }
+                                            remember(it) {
+                                                rootNavController.getBackStackEntry(
+                                                    "onboarding_flow"
+                                                )
+                                            }
                                         val viewModel: OnboardingViewModel = hiltViewModel(entry)
                                         val isVerifying by viewModel.isVerifying.collectAsState()
                                         val success by
-                                                viewModel.verificationSuccess.collectAsState()
+                                        viewModel.verificationSuccess.collectAsState()
 
                                         VerificationScreen(
-                                                isVerifying = isVerifying,
-                                                success = success,
-                                                onContinue = {
-                                                    rootNavController.navigate("main_flow") {
-                                                        popUpTo("onboarding_flow") {
-                                                            inclusive = true
-                                                        }
+                                            isVerifying = isVerifying,
+                                            success = success,
+                                            onContinue = {
+                                                rootNavController.navigate("main_flow") {
+                                                    popUpTo("onboarding_flow") {
+                                                        inclusive = true
                                                     }
-                                                },
-                                                onRetry = { rootNavController.popBackStack() }
+                                                }
+                                            },
+                                            onRetry = { rootNavController.popBackStack() }
                                         )
                                     }
                                 }
 
                                 composable("main_flow") {
                                     MainScreen(
-                                            onLogout = {
-                                                rootNavController.navigate("onboarding_flow") {
-                                                    popUpTo("main_flow") { inclusive = true }
-                                                }
+                                        onLogout = {
+                                            rootNavController.navigate("onboarding_flow") {
+                                                popUpTo("main_flow") { inclusive = true }
                                             }
+                                        }
                                     )
                                 }
 
@@ -194,25 +194,25 @@ class MainActivity : FragmentActivity() {
 
                             // Biometric Overlay Screen when locked
                             AnimatedVisibility(
-                                    visible = isBiometricLocked,
-                                    enter = fadeIn(),
-                                    exit = fadeOut()
+                                visible = isBiometricLocked,
+                                enter = fadeIn(),
+                                exit = fadeOut()
                             ) {
                                 BiometricLockOverlay(
-                                        onUnlockClick = {
-                                            if (BiometricHelper.canAuthenticate(this@MainActivity)
-                                            ) {
-                                                BiometricHelper.authenticate(
-                                                        activity = this@MainActivity,
-                                                        title = "NotiVas Academic",
-                                                        subtitle =
-                                                                "Verifica tu identidad para desbloquear tu sesión",
-                                                        onSuccess = { mainViewModel.unlockApp() }
-                                                )
-                                            } else {
-                                                mainViewModel.unlockApp()
-                                            }
+                                    onUnlockClick = {
+                                        if (BiometricHelper.canAuthenticate(this@MainActivity)
+                                        ) {
+                                            BiometricHelper.authenticate(
+                                                activity = this@MainActivity,
+                                                title = "NotiVas Academic",
+                                                subtitle =
+                                                    "Verifica tu identidad para desbloquear tu sesión",
+                                                onSuccess = { mainViewModel.unlockApp() }
+                                            )
+                                        } else {
+                                            mainViewModel.unlockApp()
                                         }
+                                    }
                                 )
                             }
                         }
@@ -227,21 +227,21 @@ class MainActivity : FragmentActivity() {
 private fun BiometricLockOverlay(onUnlockClick: () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
-                modifier = Modifier.fillMaxSize().padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(96.dp)
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(96.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(48.dp)
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(48.dp)
                     )
                 }
             }
@@ -249,50 +249,50 @@ private fun BiometricLockOverlay(onUnlockClick: () -> Unit) {
             Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                    text = "Sesión Protegida",
-                    style =
-                            MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.Bold
-                            ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
+                text = "Sesión Protegida",
+                style =
+                    MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                    text =
-                            "Tu cuenta está asegurada con cifrado biométrico. Usa tu huella o credencial de seguridad para acceder.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                text =
+                    "Tu cuenta está asegurada con cifrado biométrico. Usa tu huella o credencial de seguridad para acceder.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
 
             Spacer(modifier = Modifier.height(36.dp))
 
             Button(
-                    onClick = onUnlockClick,
-                    shape = RoundedCornerShape(16.dp),
-                    colors =
-                            ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp)
+                onClick = onUnlockClick,
+                shape = RoundedCornerShape(16.dp),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp)
             ) {
                 Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Default.Fingerprint,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                        text = "Desbloquear Sesión",
-                        style =
-                                MaterialTheme.typography.labelLarge.copy(
-                                        fontWeight = FontWeight.Bold
-                                )
+                    text = "Desbloquear Sesión",
+                    style =
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
                 )
             }
         }

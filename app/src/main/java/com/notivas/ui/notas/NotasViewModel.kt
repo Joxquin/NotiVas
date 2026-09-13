@@ -72,6 +72,7 @@ class NotasViewModel @Inject constructor(
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _selectedCourseId = MutableStateFlow<Long?>(null)
+
     // Map of evaluationId -> simulatedScore (0-20)
     private val _simulatedScores = MutableStateFlow<Map<Long, Float>>(emptyMap())
     private val _selectedTargetGoal = MutableStateFlow(14.0f)
@@ -95,7 +96,8 @@ class NotasViewModel @Inject constructor(
                     val gradedWeightSum = gradedItems.sumOf { it.weight.toDouble() }.toFloat()
 
                     val currentAverage = if (gradedWeightSum > 0f) {
-                        gradedItems.sumOf { (it.actualScore ?: 0f).toDouble() * it.weight.toDouble() }.toFloat() / gradedWeightSum
+                        gradedItems.sumOf { (it.actualScore ?: 0f).toDouble() * it.weight.toDouble() }
+                            .toFloat() / gradedWeightSum
                     } else {
                         0f
                     }
@@ -116,7 +118,8 @@ class NotasViewModel @Inject constructor(
                     val pendingWeightSum = pendingItems.sumOf { it.weight.toDouble() }.toFloat()
                     val mainPendingEval = pendingItems.maxByOrNull { it.weight }
                     val (requiredScore, targetEvalName) = if (mainPendingEval != null && pendingWeightSum > 0f) {
-                        val gradedPoints = gradedItems.sumOf { (it.actualScore ?: 0f).toDouble() * it.weight.toDouble() }.toFloat()
+                        val gradedPoints =
+                            gradedItems.sumOf { (it.actualScore ?: 0f).toDouble() * it.weight.toDouble() }.toFloat()
                         val neededPendingPoints = (targetGoal * totalWeight) - gradedPoints
                         val otherPendingPoints = pendingItems
                             .filter { it.id != mainPendingEval.id }
@@ -140,7 +143,8 @@ class NotasViewModel @Inject constructor(
 
                     val totalGroupWeight = groupUiModels.sumOf { it.group.weightPercentage.toDouble() }.toFloat()
                     val groupFinalGrade = if (totalGroupWeight > 0f) {
-                        groupUiModels.sumOf { (it.groupAverage.toDouble() * (it.group.weightPercentage.toDouble() / 100.0)) }.toFloat() * (100f / totalGroupWeight)
+                        groupUiModels.sumOf { (it.groupAverage.toDouble() * (it.group.weightPercentage.toDouble() / 100.0)) }
+                            .toFloat() * (100f / totalGroupWeight)
                     } else 0f
 
                     val hasConfiguredGroups = groupUiModels.isNotEmpty() && totalGroupWeight > 0f

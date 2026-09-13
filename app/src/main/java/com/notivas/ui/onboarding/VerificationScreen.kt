@@ -60,6 +60,7 @@ fun VerificationScreen(
                             Text("Empezar")
                         }
                     }
+
                     false -> {
                         Icon(
                             imageVector = Icons.Default.Warning,
@@ -91,7 +92,9 @@ fun VerificationScreen(
                             Text("Reintentar")
                         }
                     }
-                    null -> { /* Should not happen */ }
+
+                    null -> { /* Should not happen */
+                    }
                 }
             }
         }

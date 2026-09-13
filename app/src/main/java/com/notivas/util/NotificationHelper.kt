@@ -14,7 +14,7 @@ import javax.inject.Singleton
 class NotificationHelper @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val notificationManager = 
+    private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     companion object {
@@ -24,7 +24,7 @@ class NotificationHelper @Inject constructor(
 
     fun showNotification(title: String, message: String) {
         createChannel()
-        
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground) // Placeholder
             .setContentTitle(title)

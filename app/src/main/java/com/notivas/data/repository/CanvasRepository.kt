@@ -30,13 +30,13 @@ import kotlinx.coroutines.flow.first
 class CanvasRepository
 @Inject
 constructor(
-        @ApplicationContext private val context: Context,
-        private val apiService: CanvasApiService,
-        private val courseDao: CourseDao,
-        private val assignmentDao: AssignmentDao,
-        private val plannerItemDao: PlannerItemDao,
-        private val simulationDao: com.notivas.data.local.dao.SimulationDao,
-        private val preferencesManager: PreferencesManager
+    @ApplicationContext private val context: Context,
+    private val apiService: CanvasApiService,
+    private val courseDao: CourseDao,
+    private val assignmentDao: AssignmentDao,
+    private val plannerItemDao: PlannerItemDao,
+    private val simulationDao: com.notivas.data.local.dao.SimulationDao,
+    private val preferencesManager: PreferencesManager
 ) {
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allAssignments: Flow<List<Assignment>> = assignmentDao.getAllAssignments()
@@ -75,8 +75,8 @@ constructor(
             // 1. Fetch Planner Items (for Foros and Planner)
             val now = java.time.ZonedDateTime.now()
             val startDate =
-                    now.minusDays(30)
-                            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                now.minusDays(30)
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             try {
                 val plannerItems = apiService.getPlannerItems(token, startDate)
                 plannerItemDao.insertPlannerItems(plannerItems)
@@ -92,97 +92,97 @@ constructor(
             // 3. Fetch assignments for ALL active courses in parallel using coroutines
             val currentAssignmentsList = coroutineScope {
                 allCoursesList
-                        .map { course ->
-                            async(Dispatchers.IO) {
-                                try {
-                                    val rawAssignments =
-                                            apiService.getAssignmentsForCourse(
-                                                    token = token,
-                                                    courseId = course.id,
-                                                    include = "submission",
-                                                    orderBy = "due_at"
-                                            )
-                                    rawAssignments.mapNotNull { a ->
-                                        // Standard Canvas LMS discussion topic check
-                                        val isForum =
-                                                a.submissionTypes?.contains("discussion_topic") ==
-                                                        true ||
-                                                        a.name.contains(
-                                                                "FORO",
-                                                                ignoreCase = true
-                                                        ) ||
-                                                        a.name.contains("FORUM", ignoreCase = true)
-                                        if (isForum) return@mapNotNull null
-
-                                        val sub = a.submission
-                                        val isSubmitted =
-                                                sub != null &&
-                                                        (!sub.submittedAt.isNullOrBlank() ||
-                                                                sub.workflowState in
-                                                                        listOf(
-                                                                                "submitted",
-                                                                                "graded"
-                                                                        ))
-
-                                        val status = if (isSubmitted) "completed" else "upcoming"
-
-                                        val effectiveDueAt = a.dueAt ?: a.lockAt
-                                        a.copy(
-                                                dueAt = effectiveDueAt,
-                                                status = status,
-                                                submittedAt = sub?.submittedAt,
-                                                gradedAt = sub?.gradedAt,
-                                                score = sub?.score,
-                                                grade = sub?.grade
-                                        )
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e(
-                                            "CanvasRepository",
-                                            "Error fetching assignments for course ${course.id}",
-                                            e
+                    .map { course ->
+                        async(Dispatchers.IO) {
+                            try {
+                                val rawAssignments =
+                                    apiService.getAssignmentsForCourse(
+                                        token = token,
+                                        courseId = course.id,
+                                        include = "submission",
+                                        orderBy = "due_at"
                                     )
-                                    emptyList()
+                                rawAssignments.mapNotNull { a ->
+                                    // Standard Canvas LMS discussion topic check
+                                    val isForum =
+                                        a.submissionTypes?.contains("discussion_topic") ==
+                                                true ||
+                                                a.name.contains(
+                                                    "FORO",
+                                                    ignoreCase = true
+                                                ) ||
+                                                a.name.contains("FORUM", ignoreCase = true)
+                                    if (isForum) return@mapNotNull null
+
+                                    val sub = a.submission
+                                    val isSubmitted =
+                                        sub != null &&
+                                                (!sub.submittedAt.isNullOrBlank() ||
+                                                        sub.workflowState in
+                                                        listOf(
+                                                            "submitted",
+                                                            "graded"
+                                                        ))
+
+                                    val status = if (isSubmitted) "completed" else "upcoming"
+
+                                    val effectiveDueAt = a.dueAt ?: a.lockAt
+                                    a.copy(
+                                        dueAt = effectiveDueAt,
+                                        status = status,
+                                        submittedAt = sub?.submittedAt,
+                                        gradedAt = sub?.gradedAt,
+                                        score = sub?.score,
+                                        grade = sub?.grade
+                                    )
                                 }
+                            } catch (e: Exception) {
+                                Log.e(
+                                    "CanvasRepository",
+                                    "Error fetching assignments for course ${course.id}",
+                                    e
+                                )
+                                emptyList()
                             }
                         }
-                        .awaitAll()
-                        .flatten()
+                    }
+                    .awaitAll()
+                    .flatten()
             }
 
             // 4. Fetch Missing Submissions from Canvas API (exact endpoint used in Python
             // show_missing_tasks)
             val missingMap =
-                    try {
-                        val rawMissing = apiService.getMissingSubmissions(token)
-                        rawMissing
-                                .mapNotNull { a ->
-                                    val isForum =
-                                            a.submissionTypes?.contains("discussion_topic") ==
-                                                    true ||
-                                                    a.name.contains("FORO", ignoreCase = true) ||
-                                                    a.name.contains("FORUM", ignoreCase = true)
-                                    if (isForum) return@mapNotNull null
-                                    a.id to a.copy(status = "missing")
-                                }
-                                .toMap()
-                    } catch (e: Exception) {
-                        Log.e("CanvasRepository", "Error fetching missing submissions", e)
-                        emptyMap()
-                    }
+                try {
+                    val rawMissing = apiService.getMissingSubmissions(token)
+                    rawMissing
+                        .mapNotNull { a ->
+                            val isForum =
+                                a.submissionTypes?.contains("discussion_topic") ==
+                                        true ||
+                                        a.name.contains("FORO", ignoreCase = true) ||
+                                        a.name.contains("FORUM", ignoreCase = true)
+                            if (isForum) return@mapNotNull null
+                            a.id to a.copy(status = "missing")
+                        }
+                        .toMap()
+                } catch (e: Exception) {
+                    Log.e("CanvasRepository", "Error fetching missing submissions", e)
+                    emptyMap()
+                }
 
             // Combine both: apply missing status if assignment is in missingMap
             val currentWithMissing =
-                    currentAssignmentsList.map { a ->
-                        if (missingMap.containsKey(a.id) && a.status != "completed") {
-                            a.copy(status = "missing")
-                        } else {
-                            a
-                        }
+                currentAssignmentsList.map { a ->
+                    if (missingMap.containsKey(a.id) && a.status != "completed") {
+                        a.copy(status = "missing")
+                    } else {
+                        a
                     }
+                }
 
             val remainingMissing =
-                    missingMap.values.filter { m -> currentAssignmentsList.none { it.id == m.id } }
+                missingMap.values.filter { m -> currentAssignmentsList.none { it.id == m.id } }
             val combinedAssignments = currentWithMissing + remainingMissing
 
             assignmentDao.insertAssignments(combinedAssignments)
@@ -234,7 +234,7 @@ constructor(
     }
 
     fun getAssignmentsByCourse(courseId: Long): Flow<List<Assignment>> =
-            assignmentDao.getAssignmentsByCourse(courseId)
+        assignmentDao.getAssignmentsByCourse(courseId)
 
     suspend fun markNotificationSent(assignmentId: Long) {
         assignmentDao.updateNotificationSent(assignmentId, true)

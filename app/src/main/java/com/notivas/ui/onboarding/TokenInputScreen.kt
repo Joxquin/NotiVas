@@ -36,7 +36,7 @@ fun TokenInputScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         OutlinedTextField(
             value = token,
             onValueChange = onTokenChange,
@@ -44,9 +44,9 @@ fun TokenInputScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Button(
             onClick = onNext,
             modifier = Modifier.fillMaxWidth(),
@@ -56,7 +56,7 @@ fun TokenInputScreen(
         ) {
             Text("Verificar Conexión", style = MaterialTheme.typography.titleMedium)
         }
-        
+
         TextButton(
             onClick = onBack,
             modifier = Modifier.align(Alignment.CenterHorizontally)

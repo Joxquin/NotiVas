@@ -81,126 +81,130 @@ fun MainScreen(onLogout: () -> Unit) {
     )
 
     Scaffold(
-            topBar = {
-                if (!isSimulador) {
-                    val title =
-                            when (currentDestination?.route) {
-                                Screen.Profile.route -> "Mi Perfil"
-                                Screen.Notas.route -> "Notas"
-                                else -> "NotiVas"
-                            }
-                    TopAppBar(
-                            title = { Text(title, fontWeight = FontWeight.Bold) },
-                            colors =
-                                    TopAppBarDefaults.topAppBarColors(
-                                            containerColor = topAppBarContainerColor,
-                                            titleContentColor = MaterialTheme.colorScheme.onSurface
-                                    )
-                    )
-                }
-            },
-            bottomBar = {
-                if (!isSimulador) {
-                    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
-                    NavigationBar(
-                            modifier =
-                                    Modifier.drawBehind {
-                                        drawLine(
-                                                color = outlineVariant.copy(alpha = 0.4f),
-                                                start = Offset(0f, 0f),
-                                                end = Offset(size.width, 0f),
-                                                strokeWidth = 1.dp.toPx()
-                                        )
-                                    },
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ) {
-                        items.forEach { screen ->
-                            val selected =
-                                    currentDestination?.hierarchy?.any {
-                                        it.route == screen.route
-                                    } == true
-                            NavigationBarItem(
-                                    icon = {
-                                        val icon =
-                                                when (screen) {
-                                                    Screen.Dashboard ->
-                                                            if (selected) Icons.Filled.Dashboard
-                                                            else Icons.Outlined.Dashboard
-                                                    Screen.Foros ->
-                                                            if (selected) Icons.Filled.Forum
-                                                            else Icons.Outlined.Forum
-                                                    Screen.Notas ->
-                                                            if (selected) Icons.Filled.Analytics
-                                                            else Icons.Outlined.Analytics
-                                                    Screen.Profile ->
-                                                            if (selected) Icons.Filled.Person
-                                                            else Icons.Outlined.Person
-                                                    else ->
-                                                            if (selected) Icons.Filled.Dashboard
-                                                            else Icons.Outlined.Dashboard
-                                                }
-                                        Icon(imageVector = icon, contentDescription = null)
-                                    },
-                                    label = {
-                                        val label =
-                                                when (screen) {
-                                                    Screen.Dashboard -> "Inicio"
-                                                    Screen.Foros -> "Foros"
-                                                    Screen.Notas -> "Notas"
-                                                    Screen.Profile -> "Perfil"
-                                                    else -> "Home"
-                                                }
-                                        Text(
-                                                text = label,
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight =
-                                                        if (selected) FontWeight.SemiBold
-                                                        else FontWeight.Medium
-                                        )
-                                    },
-                                    selected = selected,
-                                    colors =
-                                            NavigationBarItemDefaults.colors(
-                                                    selectedIconColor =
-                                                            MaterialTheme.colorScheme
-                                                                    .onSecondaryContainer,
-                                                    selectedTextColor =
-                                                            MaterialTheme.colorScheme.onSurface,
-                                                    indicatorColor =
-                                                            MaterialTheme.colorScheme
-                                                                    .secondaryContainer,
-                                                    unselectedIconColor =
-                                                            MaterialTheme.colorScheme
-                                                                    .onSurfaceVariant,
-                                                    unselectedTextColor =
-                                                            MaterialTheme.colorScheme
-                                                                    .onSurfaceVariant
-                                            ),
-                                    onClick = {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
+        topBar = {
+            if (!isSimulador) {
+                val title =
+                    when (currentDestination?.route) {
+                        Screen.Profile.route -> "Mi Perfil"
+                        Screen.Notas.route -> "Notas"
+                        else -> "NotiVas"
+                    }
+                TopAppBar(
+                    title = { Text(title, fontWeight = FontWeight.Bold) },
+                    colors =
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = topAppBarContainerColor,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                )
+            }
+        },
+        bottomBar = {
+            if (!isSimulador) {
+                val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+                NavigationBar(
+                    modifier =
+                        Modifier.drawBehind {
+                            drawLine(
+                                color = outlineVariant.copy(alpha = 0.4f),
+                                start = Offset(0f, 0f),
+                                end = Offset(size.width, 0f),
+                                strokeWidth = 1.dp.toPx()
                             )
-                        }
+                        },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    items.forEach { screen ->
+                        val selected =
+                            currentDestination?.hierarchy?.any {
+                                it.route == screen.route
+                            } == true
+                        NavigationBarItem(
+                            icon = {
+                                val icon =
+                                    when (screen) {
+                                        Screen.Dashboard ->
+                                            if (selected) Icons.Filled.Dashboard
+                                            else Icons.Outlined.Dashboard
+
+                                        Screen.Foros ->
+                                            if (selected) Icons.Filled.Forum
+                                            else Icons.Outlined.Forum
+
+                                        Screen.Notas ->
+                                            if (selected) Icons.Filled.Analytics
+                                            else Icons.Outlined.Analytics
+
+                                        Screen.Profile ->
+                                            if (selected) Icons.Filled.Person
+                                            else Icons.Outlined.Person
+
+                                        else ->
+                                            if (selected) Icons.Filled.Dashboard
+                                            else Icons.Outlined.Dashboard
+                                    }
+                                Icon(imageVector = icon, contentDescription = null)
+                            },
+                            label = {
+                                val label =
+                                    when (screen) {
+                                        Screen.Dashboard -> "Inicio"
+                                        Screen.Foros -> "Foros"
+                                        Screen.Notas -> "Notas"
+                                        Screen.Profile -> "Perfil"
+                                        else -> "Home"
+                                    }
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight =
+                                        if (selected) FontWeight.SemiBold
+                                        else FontWeight.Medium
+                                )
+                            },
+                            selected = selected,
+                            colors =
+                                NavigationBarItemDefaults.colors(
+                                    selectedIconColor =
+                                        MaterialTheme.colorScheme
+                                            .onSecondaryContainer,
+                                    selectedTextColor =
+                                        MaterialTheme.colorScheme.onSurface,
+                                    indicatorColor =
+                                        MaterialTheme.colorScheme
+                                            .secondaryContainer,
+                                    unselectedIconColor =
+                                        MaterialTheme.colorScheme
+                                            .onSurfaceVariant,
+                                    unselectedTextColor =
+                                        MaterialTheme.colorScheme
+                                            .onSurfaceVariant
+                                ),
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
                     }
                 }
             }
+        }
     ) { innerPadding ->
         NavHost(
-                navController = navController,
-                startDestination = Screen.Dashboard.route,
-                modifier =
-                        if (isSimulador) {
-                            Modifier.fillMaxSize()
-                        } else {
-                            Modifier.padding(innerPadding)
-                        }
+            navController = navController,
+            startDestination = Screen.Dashboard.route,
+            modifier =
+                if (isSimulador) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier.padding(innerPadding)
+                }
         ) {
             composable(Screen.Dashboard.route) {
                 val userProfile by dashboardViewModel.userProfile.collectAsState()
@@ -209,31 +213,31 @@ fun MainScreen(onLogout: () -> Unit) {
                 val courseStats by dashboardViewModel.courseStats.collectAsState()
                 val selectedDate by dashboardViewModel.selectedDate.collectAsState()
                 val selectedDateAssignments by
-                        dashboardViewModel.selectedDateAssignments.collectAsState()
+                dashboardViewModel.selectedDateAssignments.collectAsState()
                 val inspectedCourse by dashboardViewModel.inspectedCourse.collectAsState()
                 val inspectedCourseAssignments by
-                        dashboardViewModel.inspectedCourseAssignments.collectAsState()
+                dashboardViewModel.inspectedCourseAssignments.collectAsState()
                 val inspectedCourseForums by
-                        dashboardViewModel.inspectedCourseForums.collectAsState()
+                dashboardViewModel.inspectedCourseForums.collectAsState()
                 val institutionName by dashboardViewModel.institutionName.collectAsState()
                 val isRefreshing by dashboardViewModel.isRefreshing.collectAsState()
 
                 DashboardScreen(
-                        userProfile = userProfile,
-                        urgentAssignments = urgentAssignments,
-                        weeklySchedule = weeklySchedule,
-                        courseStats = courseStats,
-                        selectedDate = selectedDate,
-                        selectedDateAssignments = selectedDateAssignments,
-                        inspectedCourse = inspectedCourse,
-                        inspectedCourseAssignments = inspectedCourseAssignments,
-                        inspectedCourseForums = inspectedCourseForums,
-                        institutionName = institutionName,
-                        isRefreshing = isRefreshing,
-                        lazyListState = dashboardListState,
-                        onDateSelect = dashboardViewModel::selectDate,
-                        onInspectCourse = dashboardViewModel::inspectCourse,
-                        onRefresh = dashboardViewModel::refresh
+                    userProfile = userProfile,
+                    urgentAssignments = urgentAssignments,
+                    weeklySchedule = weeklySchedule,
+                    courseStats = courseStats,
+                    selectedDate = selectedDate,
+                    selectedDateAssignments = selectedDateAssignments,
+                    inspectedCourse = inspectedCourse,
+                    inspectedCourseAssignments = inspectedCourseAssignments,
+                    inspectedCourseForums = inspectedCourseForums,
+                    institutionName = institutionName,
+                    isRefreshing = isRefreshing,
+                    lazyListState = dashboardListState,
+                    onDateSelect = dashboardViewModel::selectDate,
+                    onInspectCourse = dashboardViewModel::inspectCourse,
+                    onRefresh = dashboardViewModel::refresh
                 )
             }
             composable(Screen.Foros.route) {
@@ -242,56 +246,56 @@ fun MainScreen(onLogout: () -> Unit) {
                 val isRefreshing by viewModel.isRefreshing.collectAsState()
 
                 ForosScreen(
-                        forums = forums,
-                        isRefreshing = isRefreshing,
-                        onRefresh = viewModel::refresh
+                    forums = forums,
+                    isRefreshing = isRefreshing,
+                    onRefresh = viewModel::refresh
                 )
             }
             composable(Screen.Notas.route) { backStackEntry ->
                 val viewModel: NotasViewModel =
-                        hiltViewModel(
-                                remember(backStackEntry) {
-                                    navController.getBackStackEntry(Screen.Notas.route)
-                                }
-                        )
+                    hiltViewModel(
+                        remember(backStackEntry) {
+                            navController.getBackStackEntry(Screen.Notas.route)
+                        }
+                    )
                 val uiState by viewModel.uiState.collectAsState()
                 val isRefreshing by viewModel.isRefreshing.collectAsState()
 
                 NotasScreen(
-                        uiState = uiState,
-                        isRefreshing = isRefreshing,
-                        lazyListState = notasListState,
-                        onCourseSelect = viewModel::selectCourse,
-                        onSimulatedScoreChange = viewModel::updateSimulatedScore,
-                        onTargetGoalSelect = viewModel::selectTargetGoal,
-                        onResetSimulation = viewModel::resetSimulation,
-                        onRefresh = viewModel::refresh,
-                        onOpenSimulator = { navController.navigate(Screen.Simulador.route) }
+                    uiState = uiState,
+                    isRefreshing = isRefreshing,
+                    lazyListState = notasListState,
+                    onCourseSelect = viewModel::selectCourse,
+                    onSimulatedScoreChange = viewModel::updateSimulatedScore,
+                    onTargetGoalSelect = viewModel::selectTargetGoal,
+                    onResetSimulation = viewModel::resetSimulation,
+                    onRefresh = viewModel::refresh,
+                    onOpenSimulator = { navController.navigate(Screen.Simulador.route) }
                 )
             }
             composable(Screen.Simulador.route) {
                 val viewModel: NotasViewModel =
-                        hiltViewModel(
-                                remember(it) { navController.getBackStackEntry(Screen.Notas.route) }
-                        )
+                    hiltViewModel(
+                        remember(it) { navController.getBackStackEntry(Screen.Notas.route) }
+                    )
                 val uiState by viewModel.uiState.collectAsState()
                 val selectedCourse = uiState.selectedCourse
 
                 if (selectedCourse != null) {
                     com.notivas.ui.notas.SimuladorScreen(
-                            course = selectedCourse,
-                            groups = uiState.simulationGroups,
-                            availableAssignments = uiState.availableCourseAssignments,
-                            simulatedFinalGrade = uiState.groupSimulatedFinalGrade,
-                            totalWeight = uiState.totalConfiguredWeight,
-                            onBack = { navController.popBackStack() },
-                            onCreateGroup = viewModel::createGroup,
-                            onDeleteGroup = viewModel::deleteGroup,
-                            onAddCanvasAssignment = viewModel::addCanvasAssignmentToGroup,
-                            onAddPlaceholderAssignment = viewModel::addPlaceholderAssignmentToGroup,
-                            onUpdateScore = viewModel::updateSimulationItemScore,
-                            onDeleteItem = viewModel::deleteSimulationItem,
-                            onLinkItem = viewModel::linkSimulationItemWithCanvas
+                        course = selectedCourse,
+                        groups = uiState.simulationGroups,
+                        availableAssignments = uiState.availableCourseAssignments,
+                        simulatedFinalGrade = uiState.groupSimulatedFinalGrade,
+                        totalWeight = uiState.totalConfiguredWeight,
+                        onBack = { navController.popBackStack() },
+                        onCreateGroup = viewModel::createGroup,
+                        onDeleteGroup = viewModel::deleteGroup,
+                        onAddCanvasAssignment = viewModel::addCanvasAssignmentToGroup,
+                        onAddPlaceholderAssignment = viewModel::addPlaceholderAssignmentToGroup,
+                        onUpdateScore = viewModel::updateSimulationItemScore,
+                        onDeleteItem = viewModel::deleteSimulationItem,
+                        onLinkItem = viewModel::linkSimulationItemWithCanvas
                     )
                 }
             }
@@ -303,14 +307,14 @@ fun MainScreen(onLogout: () -> Unit) {
                 LaunchedEffect(isLoggedOut) { if (isLoggedOut) onLogout() }
 
                 ProfileScreen(
-                        uiState = uiState,
-                        lazyListState = profileListState,
-                        onNotif24hChange = viewModel::setNotif24h,
-                        onNotif3hChange = viewModel::setNotif3h,
-                        onNotif30mChange = viewModel::setNotif30m,
-                        onSyncIntervalChange = viewModel::setSyncInterval,
-                        onBiometricLockChange = viewModel::setBiometricLock,
-                        onLogout = viewModel::logout
+                    uiState = uiState,
+                    lazyListState = profileListState,
+                    onNotif24hChange = viewModel::setNotif24h,
+                    onNotif3hChange = viewModel::setNotif3h,
+                    onNotif30mChange = viewModel::setNotif30m,
+                    onSyncIntervalChange = viewModel::setSyncInterval,
+                    onBiometricLockChange = viewModel::setBiometricLock,
+                    onLogout = viewModel::logout
                 )
             }
         }

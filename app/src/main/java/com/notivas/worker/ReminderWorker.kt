@@ -72,7 +72,8 @@ class ReminderWorker @AssistedInject constructor(
 
                     // 1. Alerta crítica (30 minutos o menos)
                     if (notif30mEnabled && minutesLeft in 0..30 && !assignment.notified30m) {
-                        val minText = if (minutesLeft <= 1) "¡Cierra en menos de 1 minuto!" else "¡Últimos $minutesLeft minutos para la entrega!"
+                        val minText =
+                            if (minutesLeft <= 1) "¡Cierra en menos de 1 minuto!" else "¡Últimos $minutesLeft minutos para la entrega!"
                         notificationHelper.showNotification(
                             "⚠️ Alerta Crítica · $courseName",
                             "$shortName: $minText"
