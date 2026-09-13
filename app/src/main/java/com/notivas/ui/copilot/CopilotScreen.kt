@@ -1,17 +1,20 @@
 package com.notivas.ui.copilot
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.notivas.data.repository.CopilotSource
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CopilotScreen(
     uiState: CopilotUiState,
@@ -46,70 +48,67 @@ fun CopilotScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            CopilotInputBar(
-                inputText = uiState.inputText,
-                isLoading = uiState.isLoading,
-                enabled = uiState.hasApiKey && uiState.isCopilotEnabled,
-                onInputChange = onInputChange,
-                onSend = { onSendMessage(null) }
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Course Filter Chips Carousel (compact, directly below TopAppBar)
+        CourseFilterSelector(
+            courses = uiState.courses,
+            selectedCourseId = uiState.selectedCourseId,
+            onSelectCourse = onSelectCourse,
+            onClearChat = onClearConversation,
+            hasMessages = uiState.messages.isNotEmpty()
+        )
+
+        // Setup Warning Banner (if API Key missing or copilot disabled)
+        if (!uiState.hasApiKey || !uiState.isCopilotEnabled) {
+            MissingApiKeyCard(
+                isCopilotDisabled = !uiState.isCopilotEnabled,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Course Filter Chips Carousel
-            CourseFilterSelector(
-                courses = uiState.courses,
-                selectedCourseId = uiState.selectedCourseId,
-                onSelectCourse = onSelectCourse,
-                onClearChat = onClearConversation,
-                hasMessages = uiState.messages.isNotEmpty()
+
+        // Main Message Flow or Empty State Suggestions
+        if (uiState.messages.isEmpty()) {
+            CopilotEmptyState(
+                coursesCount = uiState.courses.size,
+                currentModel = uiState.currentModel,
+                onSuggestionClick = { onSendMessage(it) },
+                modifier = Modifier.weight(1f)
             )
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
+            ) {
+                items(uiState.messages, key = { it.id }) { message ->
+                    CopilotMessageBubble(message = message)
+                }
 
-            // Setup Warning Banner (if API Key missing or copilot disabled)
-            if (!uiState.hasApiKey || !uiState.isCopilotEnabled) {
-                MissingApiKeyCard(
-                    isCopilotDisabled = !uiState.isCopilotEnabled,
-                    onNavigateToProfile = onNavigateToProfile
-                )
-            }
-
-            // Main Message Flow or Empty State Suggestions
-            if (uiState.messages.isEmpty()) {
-                CopilotEmptyState(
-                    coursesCount = uiState.courses.size,
-                    currentModel = uiState.currentModel,
-                    onSuggestionClick = { onSendMessage(it) }
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    items(uiState.messages, key = { it.id }) { message ->
-                        CopilotMessageBubble(message = message)
-                    }
-
-                    if (uiState.isLoading) {
-                        item(key = "loading_bubble") {
-                            CopilotLoadingBubble()
-                        }
+                if (uiState.isLoading) {
+                    item(key = "loading_bubble") {
+                        CopilotLoadingBubble()
                     }
                 }
             }
         }
+
+        // Docked input bar (sits flush against the navbar, with imePadding)
+        CopilotInputBar(
+            inputText = uiState.inputText,
+            isLoading = uiState.isLoading,
+            enabled = uiState.hasApiKey && uiState.isCopilotEnabled,
+            onInputChange = onInputChange,
+            onSend = { onSendMessage(null) },
+            modifier = Modifier.imePadding()
+        )
     }
 }
 
@@ -124,7 +123,7 @@ private fun CourseFilterSelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         LazyRow(
@@ -144,7 +143,12 @@ private fun CourseFilterSelector(
                             modifier = Modifier.size(16.dp)
                         )
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 )
             }
 
@@ -160,7 +164,11 @@ private fun CourseFilterSelector(
                             overflow = TextOverflow.Ellipsis
                         )
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 )
             }
         }
@@ -189,7 +197,7 @@ private fun MissingApiKeyCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
@@ -198,21 +206,21 @@ private fun MissingApiKeyCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(34.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Key,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onTertiary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -229,7 +237,9 @@ private fun MissingApiKeyCard(
                     else
                         "Ingresa tu token de OpenRouter en Perfil para activar consultas contextuales.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -244,11 +254,17 @@ private fun MissingApiKeyCard(
     }
 }
 
+private data class SuggestionItem(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val title: String
+)
+
 @Composable
 private fun CopilotEmptyState(
     coursesCount: Int,
     currentModel: String,
-    onSuggestionClick: (String) -> Unit
+    onSuggestionClick: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val modelLabel = remember(currentModel) {
         when {
@@ -259,33 +275,48 @@ private fun CopilotEmptyState(
         }
     }
 
-    val suggestions = listOf(
-        "¿Qué tareas tengo pendientes de entrega esta semana?",
-        "¿Cuáles son las rúbricas y criterios de mi próxima tarea?",
-        "Simula un grupo 'Laboratorios' con 30% en el simulador",
-        "¿Cómo están mis calificaciones en todos mis cursos?"
-    )
+    val suggestions = remember {
+        listOf(
+            SuggestionItem(
+                icon = Icons.Default.DateRange,
+                title = "¿Qué tareas tengo pendientes de entrega esta semana?"
+            ),
+            SuggestionItem(
+                icon = Icons.AutoMirrored.Filled.Assignment,
+                title = "¿Cuáles son las consignas y rúbricas de mi próxima tarea?"
+            ),
+            SuggestionItem(
+                icon = Icons.Default.Calculate,
+                title = "Crea un grupo de 'Laboratorios' con 30% en el simulador"
+            ),
+            SuggestionItem(
+                icon = Icons.Default.Grade,
+                title = "¿Cómo están mis notas y calificaciones en todos mis cursos?"
+            )
+        )
+    }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(20.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.tertiaryContainer,
-            modifier = Modifier.size(64.dp)
+            modifier = Modifier.size(50.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }
@@ -293,7 +324,7 @@ private fun CopilotEmptyState(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "NotiVas Copilot",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
             Row(
@@ -330,56 +361,87 @@ private fun CopilotEmptyState(
             text = "Asistente universitario conectado en vivo con tus tareas, rúbricas de Canvas LMS y tu simulador de notas.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 8.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = "Sugerencias rápidas",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
 
-        Text(
-            text = "Sugerencias rápidas",
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.align(Alignment.Start)
-        )
-
-        suggestions.forEach { suggestion ->
+        suggestions.forEach { item ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable { onSuggestionClick(suggestion) },
-                shape = RoundedCornerShape(14.dp),
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { onSuggestionClick(item.title) },
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
-                border = androidx.compose.foundation.BorderStroke(
+                border = BorderStroke(
                     1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
                 )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
                     Text(
-                        text = suggestion,
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = item.title,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
+
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
+                        tint = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
     }
 }
 
@@ -438,7 +500,7 @@ private fun CopilotMessageBubble(message: CopilotMessageItem) {
                     MaterialTheme.colorScheme.surfaceContainer
                 },
                 border = if (!isUser) {
-                    androidx.compose.foundation.BorderStroke(
+                    BorderStroke(
                         1.dp,
                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
@@ -607,7 +669,7 @@ private fun CopilotLoadingBubble() {
                 bottomEnd = 18.dp
             ),
             color = MaterialTheme.colorScheme.surfaceContainer,
-            border = androidx.compose.foundation.BorderStroke(
+            border = BorderStroke(
                 1.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
@@ -638,20 +700,18 @@ private fun CopilotInputBar(
     isLoading: Boolean,
     enabled: Boolean,
     onInputChange: (String) -> Unit,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .imePadding()
-            .navigationBarsPadding(),
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 3.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -659,7 +719,7 @@ private fun CopilotInputBar(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(28.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = androidx.compose.foundation.BorderStroke(
+                border = BorderStroke(
                     1.dp,
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                 )
@@ -670,7 +730,7 @@ private fun CopilotInputBar(
                     placeholder = {
                         Text(
                             text = if (enabled)
-                                "Pregunta sobre tus tareas, rúbricas o notas..."
+                                "Pregunta sobre tus tareas o notas..."
                             else
                                 "Configura tu API Key en Perfil para consultar...",
                             style = MaterialTheme.typography.bodyMedium,
@@ -707,12 +767,12 @@ private fun CopilotInputBar(
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 },
                 elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp),
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Enviar",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
