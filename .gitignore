@@ -17,6 +17,8 @@ local.properties
 .kotlin
 .idea
 .vscode
+.serena/
+AGENTS.md
 
 # Firebase / Google Services
 app/google-services.json
