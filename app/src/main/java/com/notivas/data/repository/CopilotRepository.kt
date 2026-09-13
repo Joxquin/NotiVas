@@ -217,54 +217,58 @@ class CopilotRepository @Inject constructor(
         var actionFeedback: String? = null
 
         try {
-            // First LLM call
-            val request = OpenRouterChatRequest(
-                model = model,
-                messages = messages,
-                tools = tools,
-                temperature = 0.2
-            )
+            var promptTokensAccumulated = 0
+            var completionTokensAccumulated = 0
+            var totalTokensAccumulated = 0
+            var finalReply: String? = null
 
-            val response = openRouterApiService.chatCompletion(
-                authorization = authHeader,
-                request = request
-            )
+            val maxTurns = 3
+            var turn = 0
 
-            if (!response.isSuccessful) {
-                val errBody = response.errorBody()?.string() ?: "Error de conexión"
-                return Result.failure(Exception(formatOpenRouterError(response.code(), errBody)))
-            }
+            while (turn < maxTurns) {
+                turn++
 
-            val chatResponse = response.body()
-            val choice = chatResponse?.choices?.firstOrNull()
-                ?: return Result.failure(Exception("Respuesta vacía del modelo."))
-
-            val responseMessage = choice.message
-            val toolCalls = responseMessage.toolCalls
-            val firstUsage = chatResponse.usage
-
-            // If no tools needed, return answer directly
-            if (toolCalls.isNullOrEmpty()) {
-                val content = responseMessage.content ?: "No pude procesar una respuesta."
-                val pTokens = firstUsage?.promptTokens ?: 0
-                val cTokens = firstUsage?.completionTokens ?: 0
-                val tTokens = firstUsage?.totalTokens ?: (pTokens + cTokens)
-
-                // Accumulate to global preferences
-                preferencesManager.addCopilotTokens(tTokens.toLong())
-
-                return Result.success(
-                    CopilotResult(
-                        reply = content,
-                        promptTokens = pTokens,
-                        completionTokens = cTokens,
-                        totalTokens = tTokens
-                    )
+                val request = OpenRouterChatRequest(
+                    model = model,
+                    messages = messages,
+                    tools = tools,
+                    temperature = 0.2
                 )
-            }
 
-            // Execute tools requested by LLM
-            messages.add(responseMessage)
+                val response = openRouterApiService.chatCompletion(
+                    authorization = authHeader,
+                    request = request
+                )
+
+                if (!response.isSuccessful) {
+                    val errBody = response.errorBody()?.string() ?: "Error de conexión"
+                    return Result.failure(Exception(formatOpenRouterError(response.code(), errBody)))
+                }
+
+                val chatResponse = response.body()
+                val choice = chatResponse?.choices?.firstOrNull()
+                    ?: return Result.failure(Exception("Respuesta vacía del modelo."))
+
+                val responseMessage = choice.message
+                val toolCalls = responseMessage.toolCalls
+                val usage = chatResponse.usage
+
+                val pTok = usage?.promptTokens ?: 0
+                val cTok = usage?.completionTokens ?: 0
+                val tTok = usage?.totalTokens ?: (pTok + cTok)
+
+                promptTokensAccumulated += pTok
+                completionTokensAccumulated += cTok
+                totalTokensAccumulated += tTok
+
+                // If no tools needed, this is the final response
+                if (toolCalls.isNullOrEmpty()) {
+                    finalReply = responseMessage.content ?: "No pude procesar una respuesta."
+                    break
+                }
+
+                // Execute tools requested by LLM
+                messages.add(responseMessage)
 
             for (toolCall in toolCalls) {
                 val functionName = toolCall.function.name
@@ -774,28 +778,9 @@ class CopilotRepository @Inject constructor(
                     )
                 )
             }
+        }
 
-            // Second LLM call with tools results
-            val followUpRequest = OpenRouterChatRequest(
-                model = model,
-                messages = messages,
-                temperature = 0.2
-            )
-
-            val followUpResponse = openRouterApiService.chatCompletion(
-                authorization = authHeader,
-                request = followUpRequest
-            )
-
-            if (!followUpResponse.isSuccessful) {
-                val err = followUpResponse.errorBody()?.string() ?: "Error procesando resultados"
-                return Result.failure(Exception(formatOpenRouterError(followUpResponse.code(), err)))
-            }
-
-            val followUpBody = followUpResponse.body()
-            var finalReply = followUpBody?.choices?.firstOrNull()?.message?.content
             if (finalReply.isNullOrBlank()) {
-                // If model returned empty content or called a tool again, generate a clean summary from sourcesConsulted
                 if (sourcesConsulted.isNotEmpty()) {
                     finalReply = buildString {
                         append("He consultado la siguiente información de Canvas LMS:\n\n")
@@ -808,23 +793,17 @@ class CopilotRepository @Inject constructor(
                 }
             }
 
-            val secondUsage = followUpBody?.usage
-            val firstUsageTokens = firstUsage?.totalTokens ?: 0
-            val pTokens = (firstUsage?.promptTokens ?: 0) + (secondUsage?.promptTokens ?: 0)
-            val cTokens = (firstUsage?.completionTokens ?: 0) + (secondUsage?.completionTokens ?: 0)
-            val totalTokensCombined = firstUsageTokens + (secondUsage?.totalTokens ?: (pTokens + cTokens))
-
             // Accumulate to global preferences
-            preferencesManager.addCopilotTokens(totalTokensCombined.toLong())
+            preferencesManager.addCopilotTokens(totalTokensAccumulated.toLong())
 
             return Result.success(
                 CopilotResult(
                     reply = finalReply,
                     sources = sourcesConsulted,
                     actionFeedback = actionFeedback,
-                    promptTokens = pTokens,
-                    completionTokens = cTokens,
-                    totalTokens = totalTokensCombined
+                    promptTokens = promptTokensAccumulated,
+                    completionTokens = completionTokensAccumulated,
+                    totalTokens = totalTokensAccumulated
                 )
             )
 
