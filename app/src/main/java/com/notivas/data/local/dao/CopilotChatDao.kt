@@ -32,6 +32,9 @@ interface CopilotChatDao {
     @Query("UPDATE copilot_sessions SET title = :newTitle, updatedAt = :updatedAt WHERE id = :sessionId")
     suspend fun updateSessionTitle(sessionId: String, newTitle: String, updatedAt: Long = System.currentTimeMillis())
 
+    @Query("UPDATE copilot_sessions SET totalTokens = :tokens, updatedAt = :updatedAt WHERE id = :sessionId")
+    suspend fun updateSessionTokens(sessionId: String, tokens: Int, updatedAt: Long = System.currentTimeMillis())
+
     @Query("UPDATE copilot_sessions SET updatedAt = :updatedAt WHERE id = :sessionId")
     suspend fun updateSessionTimestamp(sessionId: String, updatedAt: Long = System.currentTimeMillis())
 

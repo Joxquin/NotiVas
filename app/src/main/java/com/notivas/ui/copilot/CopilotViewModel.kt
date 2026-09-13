@@ -34,6 +34,7 @@ data class CopilotMessageItem(
     val text: String,
     val sources: List<CopilotSource> = emptyList(),
     val actionFeedback: String? = null,
+    val tokens: Int = 0,
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -214,8 +215,13 @@ class CopilotViewModel @Inject constructor(
             _currentSessionId.value = sessionId
             _selectedCourseId.value = session?.courseId
             _messages.value = messages
-            // Approximation or reset of session tokens for historical chat
-            _sessionTokens.value = 0
+            // Restore total tokens used in this session
+            val sessionTokens = if (session != null && session.totalTokens > 0) {
+                session.totalTokens
+            } else {
+                messages.sumOf { it.tokens }
+            }
+            _sessionTokens.value = sessionTokens
             _showHistorySheet.value = false
         }
     }
@@ -400,11 +406,14 @@ class CopilotViewModel @Inject constructor(
                         role = CopilotRole.ASSISTANT,
                         text = response.reply,
                         sources = response.sources,
-                        actionFeedback = response.actionFeedback
+                        actionFeedback = response.actionFeedback,
+                        tokens = response.totalTokens
                     )
                     _messages.value = _messages.value + assistantMessage
-                    _sessionTokens.value += response.totalTokens
+                    val newSessionTokens = _sessionTokens.value + response.totalTokens
+                    _sessionTokens.value = newSessionTokens
                     copilotChatRepository.saveMessage(sessionId, assistantMessage)
+                    copilotChatRepository.updateSessionTokens(sessionId, newSessionTokens)
                     refreshOpenRouterBalance()
                 },
                 onFailure = { error ->

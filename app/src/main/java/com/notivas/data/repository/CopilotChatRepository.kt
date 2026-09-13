@@ -43,6 +43,7 @@ class CopilotChatRepository @Inject constructor(
                 text = entity.text,
                 sources = sources,
                 actionFeedback = entity.actionFeedback,
+                tokens = entity.tokens,
                 timestamp = entity.timestamp
             )
         }
@@ -51,7 +52,8 @@ class CopilotChatRepository @Inject constructor(
     suspend fun createOrUpdateSession(
         sessionId: String,
         title: String,
-        courseId: Long?
+        courseId: Long?,
+        initialTokens: Int = 0
     ) {
         val existing = copilotChatDao.getSessionById(sessionId)
         if (existing == null) {
@@ -60,6 +62,7 @@ class CopilotChatRepository @Inject constructor(
                     id = sessionId,
                     title = title,
                     courseId = courseId,
+                    totalTokens = initialTokens,
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis()
                 )
@@ -67,6 +70,10 @@ class CopilotChatRepository @Inject constructor(
         } else {
             copilotChatDao.updateSessionTimestamp(sessionId, System.currentTimeMillis())
         }
+    }
+
+    suspend fun updateSessionTokens(sessionId: String, tokens: Int) {
+        copilotChatDao.updateSessionTokens(sessionId, tokens)
     }
 
     suspend fun saveMessage(
@@ -86,6 +93,7 @@ class CopilotChatRepository @Inject constructor(
             text = message.text,
             sourcesJson = sourcesJson,
             actionFeedback = message.actionFeedback,
+            tokens = message.tokens,
             timestamp = message.timestamp
         )
         copilotChatDao.insertMessage(entity)

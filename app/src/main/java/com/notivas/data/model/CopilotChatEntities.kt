@@ -14,6 +14,7 @@ data class CopilotSession(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
     val courseId: Long? = null,
+    val totalTokens: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
@@ -40,5 +41,6 @@ data class CopilotMessageEntity(
     val text: String,
     val sourcesJson: String? = null,
     val actionFeedback: String? = null,
+    val tokens: Int = 0,
     val timestamp: Long = System.currentTimeMillis()
 )
