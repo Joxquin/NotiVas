@@ -1,6 +1,7 @@
 package com.notivas.ui.profile
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
@@ -35,6 +37,7 @@ fun ProfileScreen(
         onNotif24hChange: (Boolean) -> Unit,
         onNotif3hChange: (Boolean) -> Unit,
         onNotif30mChange: (Boolean) -> Unit,
+        onSyncIntervalChange: (Long) -> Unit = {},
         onBiometricLockChange: (Boolean) -> Unit,
         lazyListState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
         onLogout: () -> Unit
@@ -107,9 +110,11 @@ fun ProfileScreen(
                                 notif24h = uiState.notif24h,
                                 notif3h = uiState.notif3h,
                                 notif30m = uiState.notif30m,
+                                syncIntervalMinutes = uiState.syncIntervalMinutes,
                                 onNotif24hChange = onNotif24hChange,
                                 onNotif3hChange = onNotif3hChange,
-                                onNotif30mChange = onNotif30mChange
+                                onNotif30mChange = onNotif30mChange,
+                                onSyncIntervalChange = onSyncIntervalChange
                         )
                 }
 
@@ -292,10 +297,108 @@ private fun GranularNotificationsSection(
         notif24h: Boolean,
         notif3h: Boolean,
         notif30m: Boolean,
+        syncIntervalMinutes: Long,
         onNotif24hChange: (Boolean) -> Unit,
         onNotif3hChange: (Boolean) -> Unit,
-        onNotif30mChange: (Boolean) -> Unit
+        onNotif30mChange: (Boolean) -> Unit,
+        onSyncIntervalChange: (Long) -> Unit
 ) {
+        var showSyncIntervalDialog by remember { mutableStateOf(false) }
+
+        val syncOptions = remember {
+                listOf(
+                        15L to "Cada 15 minutos (Recomendado)",
+                        30L to "Cada 30 minutos",
+                        60L to "Cada 1 hora",
+                        180L to "Cada 3 horas",
+                        360L to "Cada 6 horas (Ahorro de batería)"
+                )
+        }
+
+        val currentLabel = syncOptions.firstOrNull { it.first == syncIntervalMinutes }?.second
+                ?: "Cada $syncIntervalMinutes minutos"
+
+        if (showSyncIntervalDialog) {
+                AlertDialog(
+                        onDismissRequest = { showSyncIntervalDialog = false },
+                        icon = {
+                                Icon(
+                                        imageVector = Icons.Default.Sync,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                )
+                        },
+                        title = {
+                                Text(
+                                        text = "Frecuencia de sincronización",
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                )
+                        },
+                        text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text(
+                                                text = "Determina con qué frecuencia NotiVas consulta a Canvas en segundo plano para detectar nuevas tareas y notas.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                        syncOptions.forEach { (minutes, label) ->
+                                                val isSelected = minutes == syncIntervalMinutes
+                                                Surface(
+                                                        shape = RoundedCornerShape(12.dp),
+                                                        color = if (isSelected) {
+                                                                MaterialTheme.colorScheme.primaryContainer
+                                                        } else {
+                                                                MaterialTheme.colorScheme.surfaceContainerLow
+                                                        },
+                                                        modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .clickable {
+                                                                        onSyncIntervalChange(minutes)
+                                                                        showSyncIntervalDialog = false
+                                                                }
+                                                ) {
+                                                        Row(
+                                                                modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                        ) {
+                                                                Text(
+                                                                        text = label,
+                                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                                        ),
+                                                                        color = if (isSelected) {
+                                                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                                                        } else {
+                                                                                MaterialTheme.colorScheme.onSurface
+                                                                        }
+                                                                )
+                                                                if (isSelected) {
+                                                                        Icon(
+                                                                                imageVector = Icons.Default.Check,
+                                                                                contentDescription = null,
+                                                                                tint = MaterialTheme.colorScheme.primary,
+                                                                                modifier = Modifier.size(18.dp)
+                                                                        )
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        },
+                        confirmButton = {
+                                TextButton(onClick = { showSyncIntervalDialog = false }) {
+                                        Text("Cerrar")
+                                }
+                        }
+                )
+        }
+
         Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -359,6 +462,77 @@ private fun GranularNotificationsSection(
                                 checked = notif30m,
                                 onCheckedChange = onNotif30mChange
                         )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+
+                        // Item 4: Sync interval
+                        Row(
+                                modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable { showSyncIntervalDialog = true }
+                                        .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                                Row(
+                                        modifier = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                        Surface(
+                                                shape = CircleShape,
+                                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                modifier = Modifier.size(40.dp)
+                                        ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                        Icon(
+                                                                imageVector = Icons.Default.Sync,
+                                                                contentDescription = null,
+                                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                modifier = Modifier.size(20.dp)
+                                                        )
+                                                }
+                                        }
+
+                                        Column(
+                                                modifier = Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.Center
+                                        ) {
+                                                Text(
+                                                        text = "Sincronización en segundo plano",
+                                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                                                fontWeight = FontWeight.SemiBold
+                                                        ),
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                        text = currentLabel,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                )
+                                        }
+                                }
+
+                                Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                ) {
+                                        Text(
+                                                text = "Cambiar",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                        fontWeight = FontWeight.SemiBold
+                                                ),
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                }
+                        }
                 }
         }
 }

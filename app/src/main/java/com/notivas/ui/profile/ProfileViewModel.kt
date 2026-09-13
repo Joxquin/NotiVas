@@ -21,6 +21,7 @@ data class ProfileUiState(
     val notif24h: Boolean = true,
     val notif3h: Boolean = true,
     val notif30m: Boolean = false,
+    val syncIntervalMinutes: Long = 15L,
     val biometricLock: Boolean = true
 )
 
@@ -40,6 +41,7 @@ class ProfileViewModel @Inject constructor(
         preferencesManager.notif24h,
         preferencesManager.notif3h,
         preferencesManager.notif30m,
+        preferencesManager.syncIntervalMinutes,
         preferencesManager.biometricLock
     ) { values ->
         val profile = values[0] as UserProfile?
@@ -47,7 +49,8 @@ class ProfileViewModel @Inject constructor(
         val notif24h = values[2] as Boolean
         val notif3h = values[3] as Boolean
         val notif30m = values[4] as Boolean
-        val biometricLock = values[5] as Boolean
+        val syncInterval = values[5] as Long
+        val biometricLock = values[6] as Boolean
 
         val host = url?.let {
             it.removePrefix("https://").removePrefix("http://").trimEnd('/')
@@ -59,6 +62,7 @@ class ProfileViewModel @Inject constructor(
             notif24h = notif24h,
             notif3h = notif3h,
             notif30m = notif30m,
+            syncIntervalMinutes = syncInterval,
             biometricLock = biometricLock
         )
     }.stateIn(
@@ -95,6 +99,13 @@ class ProfileViewModel @Inject constructor(
     fun setNotif30m(enabled: Boolean) {
         viewModelScope.launch {
             preferencesManager.setNotif30m(enabled)
+        }
+    }
+
+    fun setSyncInterval(minutes: Long) {
+        viewModelScope.launch {
+            preferencesManager.setSyncIntervalMinutes(minutes)
+            repository.updateSyncInterval(minutes)
         }
     }
 

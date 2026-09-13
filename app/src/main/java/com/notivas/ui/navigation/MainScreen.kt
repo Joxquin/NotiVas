@@ -308,6 +308,7 @@ fun MainScreen(onLogout: () -> Unit) {
                         onNotif24hChange = viewModel::setNotif24h,
                         onNotif3hChange = viewModel::setNotif3h,
                         onNotif30mChange = viewModel::setNotif30m,
+                        onSyncIntervalChange = viewModel::setSyncInterval,
                         onBiometricLockChange = viewModel::setBiometricLock,
                         onLogout = viewModel::logout
                 )
