@@ -1,6 +1,7 @@
 package com.notivas.ui.navigation
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -97,7 +98,11 @@ fun MainScreen(onLogout: () -> Unit) {
 
     Scaffold(
         topBar = {
-            if (!isSimulador) {
+            AnimatedVisibility(
+                visible = !isSimulador,
+                enter = fadeIn(animationSpec = tween(200)) + slideInVertically(animationSpec = tween(250)) { -it },
+                exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(animationSpec = tween(200)) { -it }
+            ) {
                 val title =
                     when (currentDestination?.route) {
                         Screen.Profile.route -> "Mi Perfil"
@@ -134,7 +139,11 @@ fun MainScreen(onLogout: () -> Unit) {
             }
         },
         bottomBar = {
-            if (!isSimulador) {
+            AnimatedVisibility(
+                visible = !isSimulador,
+                enter = fadeIn(animationSpec = tween(200)) + slideInVertically(animationSpec = tween(250)) { it },
+                exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(animationSpec = tween(200)) { it }
+            ) {
                 val outlineVariant = MaterialTheme.colorScheme.outlineVariant
                 NavigationBar(
                     modifier =
@@ -257,64 +266,36 @@ fun MainScreen(onLogout: () -> Unit) {
                     Modifier.padding(innerPadding)
                 },
             enterTransition = {
-                if (targetState.destination.route == Screen.Simulador.route) {
-                    slideInHorizontally(
-                        initialOffsetX = { fullWidth -> fullWidth },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    fadeIn(
-                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
-                    ) + scaleIn(
-                        initialScale = 0.94f,
-                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
-                    )
-                }
+                fadeIn(
+                    animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                ) + scaleIn(
+                    initialScale = 0.94f,
+                    animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                )
             },
             exitTransition = {
-                if (targetState.destination.route == Screen.Simulador.route) {
-                    slideOutHorizontally(
-                        targetOffsetX = { fullWidth -> -fullWidth / 4 },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
-                    ) + fadeOut(animationSpec = tween(150))
-                } else {
-                    fadeOut(
-                        animationSpec = tween(150, easing = FastOutSlowInEasing)
-                    ) + scaleOut(
-                        targetScale = 0.96f,
-                        animationSpec = tween(150, easing = FastOutSlowInEasing)
-                    )
-                }
+                fadeOut(
+                    animationSpec = tween(150, easing = FastOutSlowInEasing)
+                ) + scaleOut(
+                    targetScale = 0.96f,
+                    animationSpec = tween(150, easing = FastOutSlowInEasing)
+                )
             },
             popEnterTransition = {
-                if (initialState.destination.route == Screen.Simulador.route) {
-                    slideInHorizontally(
-                        initialOffsetX = { fullWidth -> -fullWidth / 4 },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    fadeIn(
-                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
-                    ) + scaleIn(
-                        initialScale = 0.94f,
-                        animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
-                    )
-                }
+                fadeIn(
+                    animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                ) + scaleIn(
+                    initialScale = 0.94f,
+                    animationSpec = tween(220, delayMillis = 60, easing = FastOutSlowInEasing)
+                )
             },
             popExitTransition = {
-                if (initialState.destination.route == Screen.Simulador.route) {
-                    slideOutHorizontally(
-                        targetOffsetX = { fullWidth -> fullWidth },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
-                    ) + fadeOut(animationSpec = tween(150))
-                } else {
-                    fadeOut(
-                        animationSpec = tween(150, easing = FastOutSlowInEasing)
-                    ) + scaleOut(
-                        targetScale = 0.96f,
-                        animationSpec = tween(150, easing = FastOutSlowInEasing)
-                    )
-                }
+                fadeOut(
+                    animationSpec = tween(150, easing = FastOutSlowInEasing)
+                ) + scaleOut(
+                    targetScale = 0.96f,
+                    animationSpec = tween(150, easing = FastOutSlowInEasing)
+                )
             }
         ) {
             composable(Screen.Dashboard.route) {
@@ -384,7 +365,47 @@ fun MainScreen(onLogout: () -> Unit) {
                     onOpenSimulator = { navController.navigate(Screen.Simulador.route) }
                 )
             }
-            composable(Screen.Simulador.route) {
+            composable(
+                route = Screen.Simulador.route,
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() },
+                        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(durationMillis = 260, delayMillis = 40, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.94f,
+                        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -(fullWidth * 0.2f).toInt() },
+                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                    )
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> -(fullWidth * 0.2f).toInt() },
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                    )
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() },
+                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.94f,
+                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                    )
+                }
+            ) {
                 val viewModel: NotasViewModel =
                     hiltViewModel(
                         remember(it) { navController.getBackStackEntry(Screen.Notas.route) }
