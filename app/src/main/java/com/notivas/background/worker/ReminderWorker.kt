@@ -11,8 +11,8 @@ import com.notivas.data.repository.CanvasRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
+import java.time.Duration
 import java.time.ZonedDateTime
-import java.time.temporal.ChronoUnit
 
 @HiltWorker
 class ReminderWorker @AssistedInject constructor(
@@ -26,13 +26,12 @@ class ReminderWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         return try {
-            // Sincronizar datos con Canvas si el usuario tiene sesión activa
             val token = preferencesManager.accessToken.first()
             if (!token.isNullOrBlank()) {
                 try {
                     repository.fetchAndSaveData()
                 } catch (_: Exception) {
-                    // Si falla la red, continuamos con los datos en caché local
+                    // Cache fallback
                 }
             }
 
@@ -47,22 +46,21 @@ class ReminderWorker @AssistedInject constructor(
                 alarmScheduler.scheduleAlarmsForAssignment(assignment, courseName)
             }
 
-            // Read user settings for granular notifications
             val notif24hEnabled = preferencesManager.notif24h.first()
             val notif3hEnabled = preferencesManager.notif3h.first()
             val notif30mEnabled = preferencesManager.notif30m.first()
 
             assignments.forEach { assignment ->
-                if (assignment.isCompleted) return@forEach
+                if (assignment.isCompleted || assignment.status == "completed") return@forEach
 
                 val dueStr = assignment.dueAt ?: assignment.lockAt ?: return@forEach
                 try {
                     val dueDate = ZonedDateTime.parse(dueStr)
-                    val hoursRemaining = ChronoUnit.HOURS.between(now, dueDate)
-                    val minutesRemaining = ChronoUnit.MINUTES.between(now, dueDate)
+                    if (now.isAfter(dueDate)) return@forEach
+
+                    val minutesRemaining = Duration.between(now, dueDate).toMinutes()
                     val courseName = courseMap[assignment.courseId]?.name ?: "Curso"
 
-                    // Formatear nombre para notificaciones compactas
                     val shortName = if (assignment.name.length > 38) {
                         assignment.name.take(35) + "..."
                     } else {
@@ -71,30 +69,37 @@ class ReminderWorker @AssistedInject constructor(
 
                     // 1. Alerta Crítica (30 minutos o menos)
                     if (notif30mEnabled && !assignment.notified30m && minutesRemaining in 1..30) {
+                        val notifId = ((assignment.id % 1000000) * 10 + 3).toInt()
                         notificationHelper.showNotification(
                             title = "⚠️ Alerta Crítica · $courseName",
-                            message = "$shortName: ¡Últimos $minutesRemaining minutos para la entrega!"
+                            message = "$shortName: ¡Últimos $minutesRemaining minutos para la entrega!",
+                            notificationId = notifId
                         )
                         repository.markNotified30m(assignment.id)
                     }
-                    // 2. Alerta de Urgencia (3 horas o menos)
-                    else if (notif3hEnabled && !assignment.notified3h && hoursRemaining in 1..3) {
+                    // 2. Alerta de Urgencia (3 horas a 31 min)
+                    else if (notif3hEnabled && !assignment.notified3h && minutesRemaining in 31..180) {
+                        val hours = minutesRemaining / 60
+                        val notifId = ((assignment.id % 1000000) * 10 + 2).toInt()
                         notificationHelper.showNotification(
                             title = "⏰ Alerta de Urgencia · $courseName",
-                            message = "$shortName: Quedan ~$hoursRemaining hora(s) para la entrega"
+                            message = "$shortName: Quedan ~$hours hora(s) para la entrega",
+                            notificationId = notifId
                         )
                         repository.markNotified3h(assignment.id)
                     }
-                    // 3. Recordatorio Preventivo (24 horas o menos)
-                    else if (notif24hEnabled && !assignment.notified24h && hoursRemaining in 4..24) {
+                    // 3. Recordatorio Preventivo (24 horas a 3h)
+                    else if (notif24hEnabled && !assignment.notified24h && minutesRemaining in 181..1440) {
+                        val notifId = ((assignment.id % 1000000) * 10 + 1).toInt()
                         notificationHelper.showNotification(
                             title = "📅 Recordatorio Preventivo · $courseName",
-                            message = "$shortName: Entrega programada para las próximas 24h"
+                            message = "$shortName: Entrega programada para las próximas 24h",
+                            notificationId = notifId
                         )
                         repository.markNotified24h(assignment.id)
                     }
                 } catch (_: Exception) {
-                    // Ignorar errores de parsing de fechas específicas
+                    // Ignorar errores de parsing
                 }
             }
 

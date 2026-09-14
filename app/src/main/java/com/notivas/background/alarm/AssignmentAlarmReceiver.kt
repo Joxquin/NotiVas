@@ -9,6 +9,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -22,6 +23,9 @@ class AssignmentAlarmReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var alarmScheduler: AlarmScheduler
+
+    @Inject
+    lateinit var preferencesManager: com.notivas.data.local.prefs.PreferencesManager
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
@@ -55,13 +59,21 @@ class AssignmentAlarmReceiver : BroadcastReceiver() {
             else -> return
         }
 
-        notificationHelper.showNotification(title, message)
-
         CoroutineScope(Dispatchers.IO).launch {
-            when (alertType) {
-                ALERT_TYPE_24H -> repository.markNotified24h(assignmentId)
-                ALERT_TYPE_3H -> repository.markNotified3h(assignmentId)
-                ALERT_TYPE_30M -> repository.markNotified30m(assignmentId)
+            val shouldNotify = when (alertType) {
+                ALERT_TYPE_24H -> preferencesManager.notif24h.first()
+                ALERT_TYPE_3H -> preferencesManager.notif3h.first()
+                ALERT_TYPE_30M -> preferencesManager.notif30m.first()
+                else -> false
+            }
+
+            if (shouldNotify) {
+                notificationHelper.showNotification(title, message)
+                when (alertType) {
+                    ALERT_TYPE_24H -> repository.markNotified24h(assignmentId)
+                    ALERT_TYPE_3H -> repository.markNotified3h(assignmentId)
+                    ALERT_TYPE_30M -> repository.markNotified30m(assignmentId)
+                }
             }
         }
     }

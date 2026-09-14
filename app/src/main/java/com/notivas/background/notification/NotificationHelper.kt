@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import com.notivas.R
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,6 +16,8 @@ class NotificationHelper @Inject constructor(
 ) {
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    private val notificationIdGenerator = AtomicInteger((System.currentTimeMillis() % 100000).toInt())
 
     companion object {
         const val CHANNEL_REMINDERS_ID = "assignment_reminders"
@@ -27,7 +30,8 @@ class NotificationHelper @Inject constructor(
     fun showNotification(
         title: String,
         message: String,
-        channelId: String = CHANNEL_REMINDERS_ID
+        channelId: String = CHANNEL_REMINDERS_ID,
+        notificationId: Int? = null
     ) {
         createChannels()
 
@@ -37,9 +41,23 @@ class NotificationHelper @Inject constructor(
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setGroup("ASSIGNMENT_REMINDERS")
             .build()
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        val id = notificationId ?: notificationIdGenerator.incrementAndGet()
+        notificationManager.notify(id, notification)
+        
+        // Generar notificación resumen para agrupar múltiples alertas
+        val summaryNotification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setStyle(NotificationCompat.InboxStyle().setSummaryText("Recordatorios Activos"))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setGroup("ASSIGNMENT_REMINDERS")
+            .setGroupSummary(true)
+            .setAutoCancel(true)
+            .build()
+            
+        notificationManager.notify(99999, summaryNotification)
     }
 
     private fun createChannels() {
