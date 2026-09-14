@@ -296,6 +296,12 @@ fun MainNavGraph(
                 versionCode = 4,
                 architecture = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown",
                 assignments = assignments,
+                onSendTestNotif24h = debugViewModel::sendTestNotification24h,
+                onSendTestNotif3h = debugViewModel::sendTestNotification3h,
+                onSendTestNotif30m = debugViewModel::sendTestNotification30m,
+                onRescheduleAlarms = debugViewModel::triggerRescheduleAlarms,
+                onCreateMockAssignment = debugViewModel::createMockAssignment,
+                onDeleteMockAssignment = debugViewModel::deleteMockAssignment,
                 onBack = { navController.popBackStack() }
             )
         }

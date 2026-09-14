@@ -256,6 +256,14 @@ constructor(
         assignmentDao.updateNotificationSent(assignmentId, true)
     }
 
+    suspend fun insertMockAssignment(assignment: Assignment) {
+        assignmentDao.insertAssignments(listOf(assignment))
+    }
+
+    suspend fun deleteAssignmentById(assignmentId: Long) {
+        assignmentDao.deleteAssignmentById(assignmentId)
+    }
+
     suspend fun markNotified24h(assignmentId: Long) {
         assignmentDao.markNotified24h(assignmentId)
     }
