@@ -80,13 +80,18 @@ class MainActivity : FragmentActivity() {
 
             // Trigger biometric prompt when locked
             LaunchedEffect(isBiometricLocked) {
-                if (isBiometricLocked && BiometricHelper.canAuthenticate(this@MainActivity)) {
-                    BiometricHelper.authenticate(
-                        activity = this@MainActivity,
-                        title = "NotiVas Academic",
-                        subtitle = "Verifica tu identidad para desbloquear tu sesión",
-                        onSuccess = { mainViewModel.unlockApp() }
-                    )
+                if (isBiometricLocked) {
+                    if (BiometricHelper.canAuthenticate(this@MainActivity)) {
+                        BiometricHelper.authenticate(
+                            activity = this@MainActivity,
+                            title = "NotiVas Academic",
+                            subtitle = "Verifica tu identidad para desbloquear tu sesión",
+                            onSuccess = { mainViewModel.unlockApp() }
+                        )
+                    } else {
+                        // Device has no PIN/pattern/fingerprint configured; unlock and auto-disable preference
+                        mainViewModel.disableBiometricLock()
+                    }
                 }
             }
 

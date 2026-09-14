@@ -46,7 +46,7 @@ class PreferencesManager @Inject constructor(
     val notif24h: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_24H] ?: true }
     val notif3h: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_3H] ?: true }
     val notif30m: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_30M] ?: false }
-    val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: true }
+    val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
 
     val openRouterApiKey: Flow<String?> = context.dataStore.data.map { it[OPENROUTER_API_KEY] }
     val openRouterModel: Flow<String> = context.dataStore.data.map { it[OPENROUTER_MODEL] ?: "google/gemini-2.5-flash" }
@@ -89,18 +89,18 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { it[BIOMETRIC_LOCK] = enabled }
     }
 
-    suspend fun setOpenRouterApiKey(apiKey: String?) {
+    suspend fun setOpenRouterApiKey(key: String?) {
         context.dataStore.edit {
-            if (apiKey.isNullOrBlank()) {
+            if (key.isNullOrBlank()) {
                 it.remove(OPENROUTER_API_KEY)
             } else {
-                it[OPENROUTER_API_KEY] = apiKey.trim()
+                it[OPENROUTER_API_KEY] = key
             }
         }
     }
 
     suspend fun setOpenRouterModel(model: String) {
-        context.dataStore.edit { it[OPENROUTER_MODEL] = model.trim() }
+        context.dataStore.edit { it[OPENROUTER_MODEL] = model }
     }
 
     suspend fun setCopilotEnabled(enabled: Boolean) {

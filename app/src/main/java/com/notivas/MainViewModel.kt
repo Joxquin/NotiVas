@@ -48,6 +48,13 @@ class MainViewModel @Inject constructor(
         _isBiometricLocked.value = false
     }
 
+    fun disableBiometricLock() {
+        _isBiometricLocked.value = false
+        viewModelScope.launch {
+            preferencesManager.setBiometricLock(false)
+        }
+    }
+
     fun lockApp() {
         viewModelScope.launch {
             val token = preferencesManager.accessToken.first()

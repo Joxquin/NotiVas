@@ -121,28 +121,36 @@ fun SecuritySection(
                 Switch(
                     checked = biometricLock,
                     onCheckedChange = { desiredState ->
-                        if (activity != null && BiometricHelper.canAuthenticate(activity)) {
-                            val actionTitle = if (desiredState) {
-                                "Activar Cifrado Biométrico"
+                        if (desiredState) {
+                            if (activity != null && BiometricHelper.canAuthenticate(activity)) {
+                                BiometricHelper.authenticate(
+                                    activity = activity,
+                                    title = "Activar Cifrado Biométrico",
+                                    subtitle = "Verifica tu huella o rostro para proteger tu sesión",
+                                    onSuccess = {
+                                        onBiometricLockChange(true)
+                                    }
+                                )
                             } else {
-                                "Desactivar Cifrado Biométrico"
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Configura un PIN, patrón o huella en tu dispositivo para activar esta función",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
                             }
-                            val actionSubtitle = if (desiredState) {
-                                "Verifica tu huella o rostro para proteger tu sesión"
-                            } else {
-                                "Confirma tu identidad para desactivar el bloqueo"
-                            }
-
-                            BiometricHelper.authenticate(
-                                activity = activity,
-                                title = actionTitle,
-                                subtitle = actionSubtitle,
-                                onSuccess = {
-                                    onBiometricLockChange(desiredState)
-                                }
-                            )
                         } else {
-                            onBiometricLockChange(desiredState)
+                            if (activity != null && BiometricHelper.canAuthenticate(activity)) {
+                                BiometricHelper.authenticate(
+                                    activity = activity,
+                                    title = "Desactivar Cifrado Biométrico",
+                                    subtitle = "Confirma tu identidad para desactivar el bloqueo",
+                                    onSuccess = {
+                                        onBiometricLockChange(false)
+                                    }
+                                )
+                            } else {
+                                onBiometricLockChange(false)
+                            }
                         }
                     },
                     thumbContent = if (biometricLock) {
