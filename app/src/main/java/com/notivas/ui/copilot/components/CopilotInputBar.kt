@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot.components
+package com.notivas.ui.Ananau.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -18,7 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun CopilotInputBar(
+fun AnanauInputBar(
     inputText: String,
     isLoading: Boolean,
     enabled: Boolean,

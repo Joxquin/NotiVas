@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot
+package com.notivas.ui.Ananau
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,18 +8,18 @@ import com.notivas.data.model.CanvasModule
 import com.notivas.data.model.Course
 import com.notivas.data.model.PlannerItem
 import com.notivas.data.remote.openrouter.OpenRouterMessage
-import com.notivas.data.model.CopilotSession
+import com.notivas.data.model.AnanauSession
 import com.notivas.data.repository.CanvasRepository
-import com.notivas.data.repository.CopilotChatRepository
-import com.notivas.data.repository.CopilotRepository
-import com.notivas.data.repository.CopilotSource
+import com.notivas.data.repository.AnanauChatRepository
+import com.notivas.data.repository.AnanauRepository
+import com.notivas.data.repository.AnanauSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
-enum class CopilotRole {
+enum class AnanauRole {
     USER, ASSISTANT
 }
 
@@ -28,22 +28,22 @@ enum class MentionStep {
     COURSE_RESOURCES
 }
 
-data class CopilotMessageItem(
+data class AnanauMessageItem(
     val id: String = UUID.randomUUID().toString(),
-    val role: CopilotRole,
+    val role: AnanauRole,
     val text: String,
-    val sources: List<CopilotSource> = emptyList(),
+    val sources: List<AnanauSource> = emptyList(),
     val actionFeedback: String? = null,
     val tokens: Int = 0,
     val timestamp: Long = System.currentTimeMillis()
 )
 
-data class CopilotUiState(
+data class AnanauUiState(
     val courses: List<Course> = emptyList(),
     val selectedCourseId: Long? = null,
-    val messages: List<CopilotMessageItem> = emptyList(),
+    val messages: List<AnanauMessageItem> = emptyList(),
     val isLoading: Boolean = false,
-    val isCopilotEnabled: Boolean = false,
+    val isAnanauEnabled: Boolean = false,
     val hasApiKey: Boolean = false,
     val currentModel: String = "google/gemini-2.5-flash",
     val inputText: String = "",
@@ -58,7 +58,7 @@ data class CopilotUiState(
     val courseModules: List<CanvasModule> = emptyList(),
     // Chat sessions and history
     val currentSessionId: String? = null,
-    val savedSessions: List<CopilotSession> = emptyList(),
+    val savedSessions: List<AnanauSession> = emptyList(),
     val showHistorySheet: Boolean = false,
     // Token & Credit stats
     val sessionTokens: Int = 0,
@@ -67,15 +67,15 @@ data class CopilotUiState(
 )
 
 @HiltViewModel
-class CopilotViewModel @Inject constructor(
-    private val copilotRepository: CopilotRepository,
+class AnanauViewModel @Inject constructor(
+    private val AnanauRepository: AnanauRepository,
     private val canvasRepository: CanvasRepository,
-    private val copilotChatRepository: CopilotChatRepository,
+    private val AnanauChatRepository: AnanauChatRepository,
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
     private val _selectedCourseId = MutableStateFlow<Long?>(null)
-    private val _messages = MutableStateFlow<List<CopilotMessageItem>>(emptyList())
+    private val _messages = MutableStateFlow<List<AnanauMessageItem>>(emptyList())
     private val _isLoading = MutableStateFlow(false)
     private val _inputText = MutableStateFlow("")
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -99,11 +99,11 @@ class CopilotViewModel @Inject constructor(
 
     fun refreshOpenRouterBalance() {
         viewModelScope.launch {
-            _openRouterBalance.value = copilotRepository.getOpenRouterBalance()
+            _openRouterBalance.value = AnanauRepository.getOpenRouterBalance()
         }
     }
 
-    val uiState: StateFlow<CopilotUiState> = combine(
+    val uiState: StateFlow<AnanauUiState> = combine(
         combine(
             canvasRepository.allCourses,
             _selectedCourseId,
@@ -114,7 +114,7 @@ class CopilotViewModel @Inject constructor(
             Tuple5(courses, selectedCourseId, messages, isLoading, inputText)
         },
         combine(
-            preferencesManager.copilotEnabled,
+            preferencesManager.AnanauEnabled,
             preferencesManager.openRouterApiKey,
             preferencesManager.openRouterModel,
             _errorMessage
@@ -139,14 +139,14 @@ class CopilotViewModel @Inject constructor(
             },
             combine(
                 _currentSessionId,
-                copilotChatRepository.allSessions,
+                AnanauChatRepository.allSessions,
                 _showHistorySheet
             ) { currentSessionId, savedSessions, showHistory ->
                 Triple(currentSessionId, savedSessions, showHistory)
             },
             combine(
                 _sessionTokens,
-                preferencesManager.totalCopilotTokens,
+                preferencesManager.totalAnanauTokens,
                 _openRouterBalance
             ) { sTokens, tTokens, balance ->
                 Triple(sTokens, tTokens, balance)
@@ -161,12 +161,12 @@ class CopilotViewModel @Inject constructor(
         val (assignments, plannerItems, modules) = resources
         val (currentSessionId, savedSessions, showHistory) = sessionInfo
         val (sessionTokens, totalTokens, balance) = tokenInfo
-        CopilotUiState(
+        AnanauUiState(
             courses = courses,
             selectedCourseId = selectedCourseId,
             messages = messages,
             isLoading = isLoading,
-            isCopilotEnabled = enabled,
+            isAnanauEnabled = enabled,
             hasApiKey = hasApiKey,
             currentModel = model,
             inputText = inputText,
@@ -188,7 +188,7 @@ class CopilotViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = CopilotUiState()
+        initialValue = AnanauUiState()
     )
 
     fun openHistorySheet() {
@@ -210,8 +210,8 @@ class CopilotViewModel @Inject constructor(
 
     fun loadSession(sessionId: String) {
         viewModelScope.launch {
-            val session = copilotChatRepository.getSessionById(sessionId)
-            val messages = copilotChatRepository.getMessagesForSession(sessionId)
+            val session = AnanauChatRepository.getSessionById(sessionId)
+            val messages = AnanauChatRepository.getMessagesForSession(sessionId)
             _currentSessionId.value = sessionId
             _selectedCourseId.value = session?.courseId
             _messages.value = messages
@@ -230,14 +230,14 @@ class CopilotViewModel @Inject constructor(
         val trimmed = newTitle.trim()
         if (trimmed.isNotBlank()) {
             viewModelScope.launch {
-                copilotChatRepository.renameSession(sessionId, trimmed)
+                AnanauChatRepository.renameSession(sessionId, trimmed)
             }
         }
     }
 
     fun deleteSession(sessionId: String) {
         viewModelScope.launch {
-            copilotChatRepository.deleteSession(sessionId)
+            AnanauChatRepository.deleteSession(sessionId)
             if (_currentSessionId.value == sessionId) {
                 startNewChat()
             }
@@ -358,8 +358,8 @@ class CopilotViewModel @Inject constructor(
             _currentSessionId.value = it
         }
 
-        val userMessage = CopilotMessageItem(
-            role = CopilotRole.USER,
+        val userMessage = AnanauMessageItem(
+            role = AnanauRole.USER,
             text = prompt
         )
 
@@ -371,28 +371,28 @@ class CopilotViewModel @Inject constructor(
 
         viewModelScope.launch {
             // If it's a new session, create session record with first prompt as initial title
-            val currentSession = copilotChatRepository.getSessionById(sessionId)
+            val currentSession = AnanauChatRepository.getSessionById(sessionId)
             if (currentSession == null) {
                 val title = prompt.take(40) + if (prompt.length > 40) "..." else ""
-                copilotChatRepository.createOrUpdateSession(
+                AnanauChatRepository.createOrUpdateSession(
                     sessionId = sessionId,
                     title = title,
                     courseId = _selectedCourseId.value
                 )
             }
             // Save user message
-            copilotChatRepository.saveMessage(sessionId, userMessage)
+            AnanauChatRepository.saveMessage(sessionId, userMessage)
 
             val history = updatedMessages
                 .dropLast(1)
                 .map { msg ->
                     OpenRouterMessage(
-                        role = if (msg.role == CopilotRole.USER) "user" else "assistant",
+                        role = if (msg.role == AnanauRole.USER) "user" else "assistant",
                         content = msg.text
                     )
                 }
 
-            val result = copilotRepository.queryCopilot(
+            val result = AnanauRepository.queryAnanau(
                 history = history,
                 userPrompt = prompt,
                 selectedCourseId = _selectedCourseId.value
@@ -402,8 +402,8 @@ class CopilotViewModel @Inject constructor(
 
             result.fold(
                 onSuccess = { response ->
-                    val assistantMessage = CopilotMessageItem(
-                        role = CopilotRole.ASSISTANT,
+                    val assistantMessage = AnanauMessageItem(
+                        role = AnanauRole.ASSISTANT,
                         text = response.reply,
                         sources = response.sources,
                         actionFeedback = response.actionFeedback,
@@ -412,19 +412,19 @@ class CopilotViewModel @Inject constructor(
                     _messages.value = _messages.value + assistantMessage
                     val newSessionTokens = _sessionTokens.value + response.totalTokens
                     _sessionTokens.value = newSessionTokens
-                    copilotChatRepository.saveMessage(sessionId, assistantMessage)
-                    copilotChatRepository.updateSessionTokens(sessionId, newSessionTokens)
+                    AnanauChatRepository.saveMessage(sessionId, assistantMessage)
+                    AnanauChatRepository.updateSessionTokens(sessionId, newSessionTokens)
                     refreshOpenRouterBalance()
                 },
                 onFailure = { error ->
                     val errorText = error.message ?: "Ocurrió un error inesperado."
                     _errorMessage.value = errorText
-                    val assistantErrorMessage = CopilotMessageItem(
-                        role = CopilotRole.ASSISTANT,
+                    val assistantErrorMessage = AnanauMessageItem(
+                        role = AnanauRole.ASSISTANT,
                         text = "⚠️ No se pudo procesar tu solicitud: $errorText\n\nPor favor, verifica tu API Key de OpenRouter y tu conexión."
                     )
                     _messages.value = _messages.value + assistantErrorMessage
-                    copilotChatRepository.saveMessage(sessionId, assistantErrorMessage)
+                    AnanauChatRepository.saveMessage(sessionId, assistantErrorMessage)
                 }
             )
         }

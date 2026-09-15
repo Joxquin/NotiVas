@@ -5,20 +5,20 @@ import com.notivas.data.local.dao.CourseDao
 import com.notivas.data.local.prefs.PreferencesManager
 import com.notivas.data.remote.openrouter.OpenRouterApiService
 import com.notivas.data.remote.openrouter.OpenRouterMessage
-import com.notivas.data.repository.copilot.CopilotPromptBuilder
-import com.notivas.data.repository.copilot.CopilotStreamHandler
+import com.notivas.data.repository.Ananau.AnanauPromptBuilder
+import com.notivas.data.repository.Ananau.AnanauStreamHandler
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class CopilotSource(
+data class AnanauSource(
     val title: String,
     val detail: String
 )
 
-data class CopilotResult(
+data class AnanauResult(
     val reply: String,
-    val sources: List<CopilotSource> = emptyList(),
+    val sources: List<AnanauSource> = emptyList(),
     val actionFeedback: String? = null,
     val promptTokens: Int = 0,
     val completionTokens: Int = 0,
@@ -34,19 +34,19 @@ data class OpenRouterAccountBalance(
 )
 
 @Singleton
-class CopilotRepository @Inject constructor(
+class AnanauRepository @Inject constructor(
     private val openRouterApiService: OpenRouterApiService,
     private val courseDao: CourseDao,
     private val preferencesManager: PreferencesManager,
-    private val promptBuilder: CopilotPromptBuilder,
-    private val streamHandler: CopilotStreamHandler
+    private val promptBuilder: AnanauPromptBuilder,
+    private val streamHandler: AnanauStreamHandler
 ) {
 
-    suspend fun queryCopilot(
+    suspend fun queryAnanau(
         history: List<OpenRouterMessage>,
         userPrompt: String,
         selectedCourseId: Long? = null
-    ): Result<CopilotResult> {
+    ): Result<AnanauResult> {
         val apiKey = preferencesManager.openRouterApiKey.first()
         if (apiKey.isNullOrBlank()) {
             return Result.failure(IllegalStateException("OpenRouter API Key no configurada. Ve a tu Perfil para agregarla."))
@@ -75,8 +75,8 @@ class CopilotRepository @Inject constructor(
             selectedCourseId = selectedCourseId
         )
 
-        result.onSuccess { copilotResult ->
-            preferencesManager.addCopilotTokens(copilotResult.totalTokens.toLong())
+        result.onSuccess { AnanauResult ->
+            preferencesManager.addAnanauTokens(AnanauResult.totalTokens.toLong())
         }
 
         return result
@@ -110,7 +110,7 @@ class CopilotRepository @Inject constructor(
                 limit = keyData?.limit
             )
         } catch (e: Exception) {
-            Log.e("CopilotRepository", "Error fetching OpenRouter balance", e)
+            Log.e("AnanauRepository", "Error fetching OpenRouter balance", e)
             null
         }
     }

@@ -1,4 +1,4 @@
-package com.notivas.data.repository.copilot
+package com.notivas.data.repository.Ananau
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -6,7 +6,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CopilotMessageMapper @Inject constructor() {
+class AnanauMessageMapper @Inject constructor() {
 
     private val gson = Gson()
 

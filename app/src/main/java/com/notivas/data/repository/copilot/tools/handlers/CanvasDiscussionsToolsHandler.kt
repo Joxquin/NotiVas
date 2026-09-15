@@ -1,4 +1,4 @@
-package com.notivas.data.repository.copilot.tools.handlers
+package com.notivas.data.repository.Ananau.tools.handlers
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -9,10 +9,10 @@ import com.notivas.data.remote.openrouter.OpenRouterFunction
 import com.notivas.data.remote.openrouter.OpenRouterParameters
 import com.notivas.data.remote.openrouter.OpenRouterProperty
 import com.notivas.data.remote.openrouter.OpenRouterTool
-import com.notivas.data.repository.CopilotSource
-import com.notivas.data.repository.copilot.ToolExecutionResult
-import com.notivas.data.repository.copilot.tools.CopilotToolHandler
-import com.notivas.data.repository.copilot.tools.HtmlUtils
+import com.notivas.data.repository.AnanauSource
+import com.notivas.data.repository.Ananau.ToolExecutionResult
+import com.notivas.data.repository.Ananau.tools.AnanauToolHandler
+import com.notivas.data.repository.Ananau.tools.HtmlUtils
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,7 +22,7 @@ class CanvasDiscussionsToolsHandler @Inject constructor(
     private val canvasApiService: CanvasApiService,
     private val courseDao: CourseDao,
     private val preferencesManager: PreferencesManager
-) : CopilotToolHandler {
+) : AnanauToolHandler {
 
     private val gson = Gson()
 
@@ -88,7 +88,7 @@ class CanvasDiscussionsToolsHandler @Inject constructor(
                     try {
                         val token = "Bearer $canvasToken"
                         val discussions = canvasApiService.getDiscussionTopics(token, cid)
-                        val source = CopilotSource(
+                        val source = AnanauSource(
                             title = "Foros y debates de $courseName",
                             detail = "${discussions.size} foros registrados en Canvas"
                         )
@@ -138,7 +138,7 @@ class CanvasDiscussionsToolsHandler @Inject constructor(
                         if (topicId != 0L) {
                             val topic = canvasApiService.getDiscussionTopic(token, cid, topicId)
                             val cleanMsg = topic.message?.let { cleanHtml -> HtmlUtils.cleanHtml(cleanHtml) } ?: "Sin consigna o mensaje específico"
-                            val source = CopilotSource(
+                            val source = AnanauSource(
                                 title = "Foro: ${topic.title} ($courseName)",
                                 detail = "Instrucciones y consigna en vivo de Canvas LMS"
                             )

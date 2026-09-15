@@ -25,8 +25,8 @@ data class ProfileUiState(
     val biometricLock: Boolean = false,
     val openRouterApiKey: String? = null,
     val openRouterModel: String = "google/gemini-2.5-flash",
-    val copilotEnabled: Boolean = false,
-    val totalCopilotTokens: Long = 0L,
+    val AnanauEnabled: Boolean = false,
+    val totalAnanauTokens: Long = 0L,
     val openRouterBalance: com.notivas.data.repository.OpenRouterAccountBalance? = null,
     val isLoadingBalance: Boolean = false
 )
@@ -34,7 +34,7 @@ data class ProfileUiState(
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val repository: CanvasRepository,
-    private val copilotRepository: com.notivas.data.repository.CopilotRepository,
+    private val AnanauRepository: com.notivas.data.repository.AnanauRepository,
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
@@ -52,7 +52,7 @@ class ProfileViewModel @Inject constructor(
     fun refreshOpenRouterBalance() {
         viewModelScope.launch {
             _isLoadingBalance.value = true
-            _openRouterBalance.value = copilotRepository.getOpenRouterBalance()
+            _openRouterBalance.value = AnanauRepository.getOpenRouterBalance()
             _isLoadingBalance.value = false
         }
     }
@@ -67,8 +67,8 @@ class ProfileViewModel @Inject constructor(
         preferencesManager.biometricLock,
         preferencesManager.openRouterApiKey,
         preferencesManager.openRouterModel,
-        preferencesManager.copilotEnabled,
-        preferencesManager.totalCopilotTokens,
+        preferencesManager.AnanauEnabled,
+        preferencesManager.totalAnanauTokens,
         _openRouterBalance,
         _isLoadingBalance
     ) { params ->
@@ -81,7 +81,7 @@ class ProfileViewModel @Inject constructor(
         val biometric = params[6] as Boolean
         val apiKey = params[7] as? String
         val model = params[8] as String
-        val copilotOn = params[9] as Boolean
+        val AnanauOn = params[9] as Boolean
         val tokens = params[10] as Long
         val balance = params[11] as? com.notivas.data.repository.OpenRouterAccountBalance
         val loadingBalance = params[12] as Boolean
@@ -105,8 +105,8 @@ class ProfileViewModel @Inject constructor(
             biometricLock = biometric,
             openRouterApiKey = apiKey,
             openRouterModel = model,
-            copilotEnabled = copilotOn,
-            totalCopilotTokens = tokens,
+            AnanauEnabled = AnanauOn,
+            totalAnanauTokens = tokens,
             openRouterBalance = balance,
             isLoadingBalance = loadingBalance
         )
@@ -154,8 +154,8 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch { preferencesManager.setOpenRouterModel(model) }
     }
 
-    fun setCopilotEnabled(enabled: Boolean) {
-        viewModelScope.launch { preferencesManager.setCopilotEnabled(enabled) }
+    fun setAnanauEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesManager.setAnanauEnabled(enabled) }
     }
 
     fun logout() {

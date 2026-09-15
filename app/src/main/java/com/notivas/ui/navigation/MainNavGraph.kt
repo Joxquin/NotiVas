@@ -23,8 +23,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.notivas.ui.copilot.CopilotScreen
-import com.notivas.ui.copilot.CopilotViewModel
+import com.notivas.ui.Ananau.AnanauScreen
+import com.notivas.ui.Ananau.AnanauViewModel
 import com.notivas.ui.dashboard.DashboardScreen
 import com.notivas.ui.dashboard.DashboardViewModel
 import com.notivas.ui.debug.DebugScreen
@@ -226,11 +226,11 @@ fun MainNavGraph(
             }
         }
 
-        composable(Screen.Copilot.route) {
-            val viewModel: CopilotViewModel = hiltViewModel()
+        composable(Screen.Ananau.route) {
+            val viewModel: AnanauViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsState()
 
-            CopilotScreen(
+            AnanauScreen(
                 uiState = uiState,
                 onInputChange = viewModel::updateInputText,
                 onSendMessage = { prompt -> viewModel.sendMessage(prompt) },
@@ -276,7 +276,7 @@ fun MainNavGraph(
                 onBiometricLockChange = viewModel::setBiometricLock,
                 onOpenRouterApiKeyChange = viewModel::setOpenRouterApiKey,
                 onOpenRouterModelChange = viewModel::setOpenRouterModel,
-                onCopilotEnabledChange = viewModel::setCopilotEnabled,
+                onAnanauEnabledChange = viewModel::setAnanauEnabled,
                 onRefreshOpenRouterBalance = viewModel::refreshOpenRouterBalance,
                 onNavigateToDebug = {
                     navController.navigate(Screen.Debug.route) {

@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.notivas.ui.profile.components.AppInfoFooter
-import com.notivas.ui.profile.components.CopilotSettingsSection
+import com.notivas.ui.profile.components.AnanauSettingsSection
 import com.notivas.ui.profile.components.GranularNotificationsSection
 import com.notivas.ui.profile.components.SecuritySection
 import com.notivas.ui.profile.components.StudentIdentityCard
@@ -41,7 +41,7 @@ fun ProfileScreen(
     onBiometricLockChange: (Boolean) -> Unit,
     onOpenRouterApiKeyChange: (String?) -> Unit = {},
     onOpenRouterModelChange: (String) -> Unit = {},
-    onCopilotEnabledChange: (Boolean) -> Unit = {},
+    onAnanauEnabledChange: (Boolean) -> Unit = {},
     onRefreshOpenRouterBalance: () -> Unit = {},
     onNavigateToDebug: () -> Unit = {},
     lazyListState: LazyListState = rememberLazyListState(),
@@ -121,16 +121,16 @@ fun ProfileScreen(
             )
         }
 
-        // 3. IA Copilot Contextual (OpenRouter)
+        // 3. IA Ananau Contextual (OpenRouter)
         item {
-            CopilotSettingsSection(
-                enabled = uiState.copilotEnabled,
+            AnanauSettingsSection(
+                enabled = uiState.AnanauEnabled,
                 apiKey = uiState.openRouterApiKey,
                 selectedModel = uiState.openRouterModel,
-                totalTokens = uiState.totalCopilotTokens,
+                totalTokens = uiState.totalAnanauTokens,
                 balance = uiState.openRouterBalance,
                 isLoadingBalance = uiState.isLoadingBalance,
-                onEnabledChange = onCopilotEnabledChange,
+                onEnabledChange = onAnanauEnabledChange,
                 onApiKeyChange = onOpenRouterApiKeyChange,
                 onModelChange = onOpenRouterModelChange,
                 onRefreshBalance = onRefreshOpenRouterBalance

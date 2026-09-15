@@ -7,13 +7,13 @@ import androidx.room.TypeConverters
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.notivas.data.local.dao.AssignmentDao
-import com.notivas.data.local.dao.CopilotChatDao
+import com.notivas.data.local.dao.AnanauChatDao
 import com.notivas.data.local.dao.CourseDao
 import com.notivas.data.local.dao.PlannerItemDao
 import com.notivas.data.local.dao.SimulationDao
 import com.notivas.data.model.Assignment
-import com.notivas.data.model.CopilotMessageEntity
-import com.notivas.data.model.CopilotSession
+import com.notivas.data.model.AnanauMessageEntity
+import com.notivas.data.model.AnanauSession
 import com.notivas.data.model.Course
 import com.notivas.data.model.PlannerItem
 import com.notivas.data.model.SimulationGroup
@@ -48,8 +48,8 @@ class Converters {
         PlannerItem::class,
         SimulationGroup::class,
         SimulationItem::class,
-        CopilotSession::class,
-        CopilotMessageEntity::class
+        AnanauSession::class,
+        AnanauMessageEntity::class
     ],
     version = 10,
     exportSchema = false
@@ -60,5 +60,5 @@ abstract class CanvasDatabase : RoomDatabase() {
     abstract fun assignmentDao(): AssignmentDao
     abstract fun plannerItemDao(): PlannerItemDao
     abstract fun simulationDao(): SimulationDao
-    abstract fun copilotChatDao(): CopilotChatDao
+    abstract fun AnanauChatDao(): AnanauChatDao
 }

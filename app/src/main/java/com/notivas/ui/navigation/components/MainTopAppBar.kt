@@ -48,7 +48,7 @@ fun MainTopAppBar(
         val title = when (currentDestination?.route) {
             Screen.Profile.route -> "Mi Perfil"
             Screen.Notas.route -> "Notas"
-            Screen.Copilot.route -> "Copilot AI"
+            Screen.Ananau.route -> "Ananau AI"
             else -> "NotiVas"
         }
         TopAppBar(

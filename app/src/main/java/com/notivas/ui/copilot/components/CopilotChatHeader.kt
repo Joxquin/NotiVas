@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot.components
+package com.notivas.ui.Ananau.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -21,7 +21,7 @@ import com.notivas.data.repository.OpenRouterAccountBalance
 import java.util.Locale
 
 @Composable
-fun CopilotChatHeader(
+fun AnanauChatHeader(
     savedSessionsCount: Int,
     sessionTokens: Int,
     openRouterBalance: OpenRouterAccountBalance?,
@@ -178,7 +178,7 @@ fun CopilotChatHeader(
 
 @Composable
 fun MissingApiKeyCard(
-    isCopilotDisabled: Boolean,
+    isAnanauDisabled: Boolean,
     onNavigateToProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -215,13 +215,13 @@ fun MissingApiKeyCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isCopilotDisabled) "Copilot Desactivado" else "OpenRouter Key Requerida",
+                    text = if (isAnanauDisabled) "Ananau Desactivado" else "OpenRouter Key Requerida",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
                 Text(
-                    text = if (isCopilotDisabled)
-                        "Activa NotiVas Copilot en tus ajustes de Perfil."
+                    text = if (isAnanauDisabled)
+                        "Activa NotiVas Ananau en tus ajustes de Perfil."
                     else
                         "Ingresa tu token de OpenRouter en Perfil para activar consultas contextuales.",
                     style = MaterialTheme.typography.bodySmall,

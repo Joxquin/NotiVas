@@ -32,7 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import com.notivas.ui.notas.components.CopilotForecastCard
+import com.notivas.ui.notas.components.AnanauForecastCard
 import com.notivas.ui.notas.components.HeroSummaryCard
 import com.notivas.ui.notas.components.NotasHeaderSection
 import com.notivas.ui.notas.components.SimulatorLauncherCard
@@ -177,9 +177,9 @@ fun NotasScreen(
                     )
                 }
 
-                // Algorithmic Copilot Forecast Card
+                // Algorithmic Ananau Forecast Card
                 item {
-                    CopilotForecastCard(
+                    AnanauForecastCard(
                         projectedGrade = uiState.projectedFinalGrade,
                         targetGoals = uiState.targetGoals,
                         selectedTargetGoal = uiState.selectedTargetGoal,

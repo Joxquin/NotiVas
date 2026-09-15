@@ -12,7 +12,7 @@ interface OpenRouterApiService {
     suspend fun chatCompletion(
         @Header("Authorization") authorization: String,
         @Header("HTTP-Referer") referer: String = "https://github.com/joxquin/NotiVas",
-        @Header("X-Title") title: String = "NotiVas Academic Copilot",
+        @Header("X-Title") title: String = "NotiVas Academic Ananau",
         @Body request: OpenRouterChatRequest
     ): Response<OpenRouterChatResponse>
 

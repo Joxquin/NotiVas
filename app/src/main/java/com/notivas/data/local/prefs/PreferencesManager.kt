@@ -32,11 +32,11 @@ class PreferencesManager @Inject constructor(
         // Security preference
         val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock")
 
-        // OpenRouter & AI Copilot preferences
+        // OpenRouter & AI Ananau preferences
         val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
         val OPENROUTER_MODEL = stringPreferencesKey("openrouter_model")
-        val COPILOT_ENABLED = booleanPreferencesKey("copilot_enabled")
-        val TOTAL_COPILOT_TOKENS = longPreferencesKey("total_copilot_tokens")
+        val Ananau_ENABLED = booleanPreferencesKey("Ananau_enabled")
+        val TOTAL_Ananau_TOKENS = longPreferencesKey("total_Ananau_tokens")
     }
 
     val universityUrl: Flow<String?> = context.dataStore.data.map { it[UNIVERSITY_URL] }
@@ -50,14 +50,14 @@ class PreferencesManager @Inject constructor(
 
     val openRouterApiKey: Flow<String?> = context.dataStore.data.map { it[OPENROUTER_API_KEY] }
     val openRouterModel: Flow<String> = context.dataStore.data.map { it[OPENROUTER_MODEL] ?: "google/gemini-2.5-flash" }
-    val copilotEnabled: Flow<Boolean> = context.dataStore.data.map { it[COPILOT_ENABLED] ?: false }
-    val totalCopilotTokens: Flow<Long> = context.dataStore.data.map { it[TOTAL_COPILOT_TOKENS] ?: 0L }
+    val AnanauEnabled: Flow<Boolean> = context.dataStore.data.map { it[Ananau_ENABLED] ?: false }
+    val totalAnanauTokens: Flow<Long> = context.dataStore.data.map { it[TOTAL_Ananau_TOKENS] ?: 0L }
 
-    suspend fun addCopilotTokens(tokens: Long) {
+    suspend fun addAnanauTokens(tokens: Long) {
         if (tokens <= 0) return
         context.dataStore.edit {
-            val current = it[TOTAL_COPILOT_TOKENS] ?: 0L
-            it[TOTAL_COPILOT_TOKENS] = current + tokens
+            val current = it[TOTAL_Ananau_TOKENS] ?: 0L
+            it[TOTAL_Ananau_TOKENS] = current + tokens
         }
     }
 
@@ -103,8 +103,8 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { it[OPENROUTER_MODEL] = model }
     }
 
-    suspend fun setCopilotEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[COPILOT_ENABLED] = enabled }
+    suspend fun setAnanauEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Ananau_ENABLED] = enabled }
     }
 
     suspend fun clear() {

@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot.components
+package com.notivas.ui.Ananau.components
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -28,16 +28,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.notivas.data.repository.CopilotSource
-import com.notivas.ui.copilot.CopilotMessageItem
-import com.notivas.ui.copilot.CopilotRole
+import com.notivas.data.repository.AnanauSource
+import com.notivas.ui.Ananau.AnanauMessageItem
+import com.notivas.ui.Ananau.AnanauRole
 
 @Composable
-fun CopilotMessageBubble(
-    message: CopilotMessageItem,
+fun AnanauMessageBubble(
+    message: AnanauMessageItem,
     modifier: Modifier = Modifier
 ) {
-    val isUser = message.role == CopilotRole.USER
+    val isUser = message.role == AnanauRole.USER
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -195,7 +195,7 @@ fun CopilotMessageBubble(
 }
 
 @Composable
-fun SourcesAccordion(sources: List<CopilotSource>) {
+fun SourcesAccordion(sources: List<AnanauSource>) {
     var expanded by remember { mutableStateOf(false) }
 
     Surface(

@@ -89,7 +89,7 @@ fun MainBottomNavBar(
                                 if (selected) Icons.Filled.Analytics
                                 else Icons.Outlined.Analytics
 
-                            Screen.Copilot ->
+                            Screen.Ananau ->
                                 if (selected) Icons.Filled.AutoAwesome
                                 else Icons.Outlined.AutoAwesome
 
@@ -115,7 +115,7 @@ fun MainBottomNavBar(
                             Screen.Dashboard -> "Inicio"
                             Screen.Foros -> "Foros"
                             Screen.Notas -> "Notas"
-                            Screen.Copilot -> "Copilot"
+                            Screen.Ananau -> "Ananau"
                             Screen.Profile -> "Perfil"
                             else -> "Home"
                         }

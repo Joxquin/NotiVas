@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot.components
+package com.notivas.ui.Ananau.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.notivas.data.model.CopilotSession
+import com.notivas.data.model.AnanauSession
 import com.notivas.data.model.Course
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -26,8 +26,8 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CopilotHistoryBottomSheet(
-    savedSessions: List<CopilotSession>,
+fun AnanauHistoryBottomSheet(
+    savedSessions: List<AnanauSession>,
     currentSessionId: String?,
     courses: List<Course>,
     onSelectSession: (String) -> Unit,
@@ -36,8 +36,8 @@ fun CopilotHistoryBottomSheet(
     onNewChat: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var sessionToRename by remember { mutableStateOf<CopilotSession?>(null) }
-    var sessionToDelete by remember { mutableStateOf<CopilotSession?>(null) }
+    var sessionToRename by remember { mutableStateOf<AnanauSession?>(null) }
+    var sessionToDelete by remember { mutableStateOf<AnanauSession?>(null) }
     var renameInputText by remember { mutableStateOf("") }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -129,7 +129,7 @@ fun CopilotHistoryBottomSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Cada vez que chatees con Copilot se guardará aquí automáticamente.",
+                            text = "Cada vez que chatees con Ananau se guardará aquí automáticamente.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )

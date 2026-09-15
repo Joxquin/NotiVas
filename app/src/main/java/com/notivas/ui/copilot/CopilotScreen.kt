@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot
+package com.notivas.ui.Ananau
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -16,11 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.notivas.data.model.Course
-import com.notivas.ui.copilot.components.*
+import com.notivas.ui.Ananau.components.*
 
 @Composable
-fun CopilotScreen(
-    uiState: CopilotUiState,
+fun AnanauScreen(
+    uiState: AnanauUiState,
     onInputChange: (String) -> Unit,
     onSendMessage: (String?) -> Unit,
     onClearConversation: () -> Unit,
@@ -50,7 +50,7 @@ fun CopilotScreen(
 
     // Modal Bottom Sheet for History
     if (uiState.showHistorySheet) {
-        CopilotHistoryBottomSheet(
+        AnanauHistoryBottomSheet(
             savedSessions = uiState.savedSessions,
             currentSessionId = uiState.currentSessionId,
             courses = uiState.courses,
@@ -69,7 +69,7 @@ fun CopilotScreen(
             .imePadding()
     ) {
         // Top action bar: History, Balance, and Chat Actions
-        CopilotChatHeader(
+        AnanauChatHeader(
             savedSessionsCount = uiState.savedSessions.size,
             sessionTokens = uiState.sessionTokens,
             openRouterBalance = uiState.openRouterBalance,
@@ -79,10 +79,10 @@ fun CopilotScreen(
             onClearConversation = onClearConversation
         )
 
-        // Setup Warning Banner (if API Key missing or copilot disabled)
-        if (!uiState.hasApiKey || !uiState.isCopilotEnabled) {
+        // Setup Warning Banner (if API Key missing or Ananau disabled)
+        if (!uiState.hasApiKey || !uiState.isAnanauEnabled) {
             MissingApiKeyCard(
-                isCopilotDisabled = !uiState.isCopilotEnabled,
+                isAnanauDisabled = !uiState.isAnanauEnabled,
                 onNavigateToProfile = onNavigateToProfile
             )
         }
@@ -94,7 +94,7 @@ fun CopilotScreen(
                 .weight(1f)
         ) {
             // Main Message Flow or Empty State
-            CopilotMessageList(
+            AnanauMessageList(
                 messages = uiState.messages,
                 isLoading = uiState.isLoading,
                 listState = listState,
@@ -130,7 +130,7 @@ fun CopilotScreen(
                 exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                CopilotMentionPopup(
+                AnanauMentionPopup(
                     uiState = uiState,
                     onSelectCourse = onSelectMentionCourse,
                     onApplyCourse = onApplyCourseMention,
@@ -142,10 +142,10 @@ fun CopilotScreen(
         }
 
         // Docked input bar with '@' trigger button
-        CopilotInputBar(
+        AnanauInputBar(
             inputText = uiState.inputText,
             isLoading = uiState.isLoading,
-            enabled = uiState.hasApiKey && uiState.isCopilotEnabled,
+            enabled = uiState.hasApiKey && uiState.isAnanauEnabled,
             onInputChange = onInputChange,
             onSend = { onSendMessage(null) },
             onTriggerMention = onTriggerAtMention

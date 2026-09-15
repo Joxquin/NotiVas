@@ -1,4 +1,4 @@
-package com.notivas.data.repository.copilot
+package com.notivas.data.repository.Ananau
 
 import com.notivas.data.model.Course
 import com.notivas.data.remote.openrouter.OpenRouterMessage
@@ -6,7 +6,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CopilotPromptBuilder @Inject constructor() {
+class AnanauPromptBuilder @Inject constructor() {
 
     fun buildSystemPrompt(
         courses: List<Course>,
@@ -15,7 +15,7 @@ class CopilotPromptBuilder @Inject constructor() {
         val coursesSummary = courses.joinToString("; ") { "ID: ${it.id} - ${it.name} (${it.courseCode ?: "N/A"})" }
 
         return buildString {
-            append("Eres NotiVas Copilot, un asistente académico inteligente, autónomo y proactivo para estudiantes universitarios integrados con Canvas LMS. ")
+            append("Eres NotiVas Ananau, un asistente académico inteligente, autónomo y proactivo para estudiantes universitarios integrados con Canvas LMS. ")
             append("Respondes en español con formato Markdown limpio (viñetas, negritas, tablas si es necesario). ")
             append("Cuentas con herramientas para consultar información local y en vivo de Canvas LMS. ")
             append("LISTA DE CURSOS INSCRITOS: [$coursesSummary]. ")

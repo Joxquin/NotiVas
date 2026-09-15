@@ -52,7 +52,7 @@ import com.notivas.data.repository.OpenRouterAccountBalance
 import java.util.Locale
 
 @Composable
-fun CopilotSettingsSection(
+fun AnanauSettingsSection(
     enabled: Boolean,
     apiKey: String?,
     selectedModel: String,
@@ -117,7 +117,7 @@ fun CopilotSettingsSection(
             // Item 1: Master Enable / Disable Toggle
             NotificationToggleRow(
                 icon = Icons.Default.SmartToy,
-                title = "NotiVas Copilot",
+                title = "NotiVas Ananau",
                 subtitle = "Asistente académico inteligente con IA",
                 checked = enabled,
                 onCheckedChange = onEnabledChange,

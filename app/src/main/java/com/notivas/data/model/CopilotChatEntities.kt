@@ -7,9 +7,9 @@ import androidx.room.PrimaryKey
 import java.util.UUID
 
 @Entity(
-    tableName = "copilot_sessions"
+    tableName = "Ananau_sessions"
 )
-data class CopilotSession(
+data class AnanauSession(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val title: String,
@@ -20,10 +20,10 @@ data class CopilotSession(
 )
 
 @Entity(
-    tableName = "copilot_messages",
+    tableName = "Ananau_messages",
     foreignKeys = [
         ForeignKey(
-            entity = CopilotSession::class,
+            entity = AnanauSession::class,
             parentColumns = ["id"],
             childColumns = ["sessionId"],
             onDelete = ForeignKey.CASCADE
@@ -33,7 +33,7 @@ data class CopilotSession(
         Index(value = ["sessionId"])
     ]
 )
-data class CopilotMessageEntity(
+data class AnanauMessageEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val sessionId: String,

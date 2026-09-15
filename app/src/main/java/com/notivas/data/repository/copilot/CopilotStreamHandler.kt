@@ -1,19 +1,19 @@
-package com.notivas.data.repository.copilot
+package com.notivas.data.repository.Ananau
 
 import android.util.Log
 import com.notivas.data.remote.openrouter.OpenRouterApiService
 import com.notivas.data.remote.openrouter.OpenRouterChatRequest
 import com.notivas.data.remote.openrouter.OpenRouterMessage
-import com.notivas.data.repository.CopilotResult
-import com.notivas.data.repository.CopilotSource
+import com.notivas.data.repository.AnanauResult
+import com.notivas.data.repository.AnanauSource
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CopilotStreamHandler @Inject constructor(
+class AnanauStreamHandler @Inject constructor(
     private val openRouterApiService: OpenRouterApiService,
-    private val toolExecutor: CopilotToolExecutor,
-    private val messageMapper: CopilotMessageMapper
+    private val toolExecutor: AnanauToolExecutor,
+    private val messageMapper: AnanauMessageMapper
 ) {
 
     suspend fun executeChatLoop(
@@ -21,8 +21,8 @@ class CopilotStreamHandler @Inject constructor(
         model: String,
         messages: MutableList<OpenRouterMessage>,
         selectedCourseId: Long?
-    ): Result<CopilotResult> {
-        val sourcesConsulted = mutableListOf<CopilotSource>()
+    ): Result<AnanauResult> {
+        val sourcesConsulted = mutableListOf<AnanauSource>()
         var actionFeedback: String? = null
 
         var promptTokensAccumulated = 0
@@ -119,7 +119,7 @@ class CopilotStreamHandler @Inject constructor(
             }
 
             return Result.success(
-                CopilotResult(
+                AnanauResult(
                     reply = finalReply,
                     sources = sourcesConsulted,
                     actionFeedback = actionFeedback,
@@ -129,7 +129,7 @@ class CopilotStreamHandler @Inject constructor(
                 )
             )
         } catch (e: Exception) {
-            Log.e("CopilotStreamHandler", "Error during chat execution loop", e)
+            Log.e("AnanauStreamHandler", "Error during chat execution loop", e)
             return Result.failure(e)
         }
     }

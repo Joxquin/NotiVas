@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 
 @Composable
-fun CopilotForecastCard(
+fun AnanauForecastCard(
     projectedGrade: Float,
     targetGoals: List<Float>,
     selectedTargetGoal: Float,
@@ -51,7 +51,7 @@ fun CopilotForecastCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header with Copilot AI badge
+            // Header with Ananau AI badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

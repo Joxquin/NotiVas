@@ -2,34 +2,34 @@ package com.notivas.data.repository
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.notivas.data.local.dao.CopilotChatDao
-import com.notivas.data.model.CopilotMessageEntity
-import com.notivas.data.model.CopilotSession
-import com.notivas.ui.copilot.CopilotMessageItem
-import com.notivas.ui.copilot.CopilotRole
+import com.notivas.data.local.dao.AnanauChatDao
+import com.notivas.data.model.AnanauMessageEntity
+import com.notivas.data.model.AnanauSession
+import com.notivas.ui.Ananau.AnanauMessageItem
+import com.notivas.ui.Ananau.AnanauRole
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CopilotChatRepository @Inject constructor(
-    private val copilotChatDao: CopilotChatDao
+class AnanauChatRepository @Inject constructor(
+    private val AnanauChatDao: AnanauChatDao
 ) {
     private val gson = Gson()
 
-    val allSessions: Flow<List<CopilotSession>> = copilotChatDao.getAllSessions()
+    val allSessions: Flow<List<AnanauSession>> = AnanauChatDao.getAllSessions()
 
-    suspend fun getSessionById(sessionId: String): CopilotSession? {
-        return copilotChatDao.getSessionById(sessionId)
+    suspend fun getSessionById(sessionId: String): AnanauSession? {
+        return AnanauChatDao.getSessionById(sessionId)
     }
 
-    suspend fun getMessagesForSession(sessionId: String): List<CopilotMessageItem> {
-        val entities = copilotChatDao.getMessagesForSessionOnce(sessionId)
+    suspend fun getMessagesForSession(sessionId: String): List<AnanauMessageItem> {
+        val entities = AnanauChatDao.getMessagesForSessionOnce(sessionId)
         return entities.map { entity ->
             val sources = if (!entity.sourcesJson.isNullOrBlank()) {
                 try {
-                    val type = object : TypeToken<List<CopilotSource>>() {}.type
-                    gson.fromJson<List<CopilotSource>>(entity.sourcesJson, type) ?: emptyList()
+                    val type = object : TypeToken<List<AnanauSource>>() {}.type
+                    gson.fromJson<List<AnanauSource>>(entity.sourcesJson, type) ?: emptyList()
                 } catch (e: Exception) {
                     emptyList()
                 }
@@ -37,9 +37,9 @@ class CopilotChatRepository @Inject constructor(
                 emptyList()
             }
 
-            CopilotMessageItem(
+            AnanauMessageItem(
                 id = entity.id,
-                role = if (entity.role == "USER") CopilotRole.USER else CopilotRole.ASSISTANT,
+                role = if (entity.role == "USER") AnanauRole.USER else AnanauRole.ASSISTANT,
                 text = entity.text,
                 sources = sources,
                 actionFeedback = entity.actionFeedback,
@@ -55,10 +55,10 @@ class CopilotChatRepository @Inject constructor(
         courseId: Long?,
         initialTokens: Int = 0
     ) {
-        val existing = copilotChatDao.getSessionById(sessionId)
+        val existing = AnanauChatDao.getSessionById(sessionId)
         if (existing == null) {
-            copilotChatDao.insertSession(
-                CopilotSession(
+            AnanauChatDao.insertSession(
+                AnanauSession(
                     id = sessionId,
                     title = title,
                     courseId = courseId,
@@ -68,17 +68,17 @@ class CopilotChatRepository @Inject constructor(
                 )
             )
         } else {
-            copilotChatDao.updateSessionTimestamp(sessionId, System.currentTimeMillis())
+            AnanauChatDao.updateSessionTimestamp(sessionId, System.currentTimeMillis())
         }
     }
 
     suspend fun updateSessionTokens(sessionId: String, tokens: Int) {
-        copilotChatDao.updateSessionTokens(sessionId, tokens)
+        AnanauChatDao.updateSessionTokens(sessionId, tokens)
     }
 
     suspend fun saveMessage(
         sessionId: String,
-        message: CopilotMessageItem
+        message: AnanauMessageItem
     ) {
         val sourcesJson = if (message.sources.isNotEmpty()) {
             gson.toJson(message.sources)
@@ -86,29 +86,29 @@ class CopilotChatRepository @Inject constructor(
             null
         }
 
-        val entity = CopilotMessageEntity(
+        val entity = AnanauMessageEntity(
             id = message.id,
             sessionId = sessionId,
-            role = if (message.role == CopilotRole.USER) "USER" else "ASSISTANT",
+            role = if (message.role == AnanauRole.USER) "USER" else "ASSISTANT",
             text = message.text,
             sourcesJson = sourcesJson,
             actionFeedback = message.actionFeedback,
             tokens = message.tokens,
             timestamp = message.timestamp
         )
-        copilotChatDao.insertMessage(entity)
-        copilotChatDao.updateSessionTimestamp(sessionId, System.currentTimeMillis())
+        AnanauChatDao.insertMessage(entity)
+        AnanauChatDao.updateSessionTimestamp(sessionId, System.currentTimeMillis())
     }
 
     suspend fun renameSession(sessionId: String, newTitle: String) {
-        copilotChatDao.updateSessionTitle(sessionId, newTitle)
+        AnanauChatDao.updateSessionTitle(sessionId, newTitle)
     }
 
     suspend fun deleteSession(sessionId: String) {
-        copilotChatDao.deleteSession(sessionId)
+        AnanauChatDao.deleteSession(sessionId)
     }
 
     suspend fun deleteAllSessions() {
-        copilotChatDao.deleteAllSessions()
+        AnanauChatDao.deleteAllSessions()
     }
 }

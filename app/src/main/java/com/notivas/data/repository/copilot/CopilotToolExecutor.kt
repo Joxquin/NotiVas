@@ -1,24 +1,24 @@
-package com.notivas.data.repository.copilot
+package com.notivas.data.repository.Ananau
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.notivas.data.remote.openrouter.OpenRouterTool
-import com.notivas.data.repository.CopilotSource
-import com.notivas.data.repository.copilot.tools.handlers.CanvasAcademicToolsHandler
-import com.notivas.data.repository.copilot.tools.handlers.CanvasDiscussionsToolsHandler
-import com.notivas.data.repository.copilot.tools.handlers.CanvasModulesToolsHandler
-import com.notivas.data.repository.copilot.tools.handlers.SimulatorToolsHandler
+import com.notivas.data.repository.AnanauSource
+import com.notivas.data.repository.Ananau.tools.handlers.CanvasAcademicToolsHandler
+import com.notivas.data.repository.Ananau.tools.handlers.CanvasDiscussionsToolsHandler
+import com.notivas.data.repository.Ananau.tools.handlers.CanvasModulesToolsHandler
+import com.notivas.data.repository.Ananau.tools.handlers.SimulatorToolsHandler
 import javax.inject.Inject
 import javax.inject.Singleton
 
 data class ToolExecutionResult(
     val resultJson: String,
-    val source: CopilotSource? = null,
+    val source: AnanauSource? = null,
     val actionFeedback: String? = null
 )
 
 @Singleton
-class CopilotToolExecutor @Inject constructor(
+class AnanauToolExecutor @Inject constructor(
     canvasAcademicToolsHandler: CanvasAcademicToolsHandler,
     canvasModulesToolsHandler: CanvasModulesToolsHandler,
     canvasDiscussionsToolsHandler: CanvasDiscussionsToolsHandler,

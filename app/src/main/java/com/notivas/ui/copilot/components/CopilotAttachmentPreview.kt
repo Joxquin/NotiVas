@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot.components
+package com.notivas.ui.Ananau.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -21,15 +21,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.notivas.data.model.Course
-import com.notivas.ui.copilot.CopilotUiState
-import com.notivas.ui.copilot.MentionStep
+import com.notivas.ui.Ananau.AnanauUiState
+import com.notivas.ui.Ananau.MentionStep
 
 /**
  * Interactive Contextual @ Mention Popup and resource preview component.
  */
 @Composable
-fun CopilotMentionPopup(
-    uiState: CopilotUiState,
+fun AnanauMentionPopup(
+    uiState: AnanauUiState,
     onSelectCourse: (Course) -> Unit,
     onApplyCourse: (Course) -> Unit,
     onApplyResource: (Course, String) -> Unit,

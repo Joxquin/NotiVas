@@ -1,4 +1,4 @@
-package com.notivas.data.repository.copilot.tools.handlers
+package com.notivas.data.repository.Ananau.tools.handlers
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -11,10 +11,10 @@ import com.notivas.data.remote.openrouter.OpenRouterFunction
 import com.notivas.data.remote.openrouter.OpenRouterParameters
 import com.notivas.data.remote.openrouter.OpenRouterProperty
 import com.notivas.data.remote.openrouter.OpenRouterTool
-import com.notivas.data.repository.CopilotSource
-import com.notivas.data.repository.copilot.ToolExecutionResult
-import com.notivas.data.repository.copilot.tools.CopilotToolHandler
-import com.notivas.data.repository.copilot.tools.HtmlUtils
+import com.notivas.data.repository.AnanauSource
+import com.notivas.data.repository.Ananau.ToolExecutionResult
+import com.notivas.data.repository.Ananau.tools.AnanauToolHandler
+import com.notivas.data.repository.Ananau.tools.HtmlUtils
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +24,7 @@ class CanvasModulesToolsHandler @Inject constructor(
     private val canvasApiService: CanvasApiService,
     private val courseDao: CourseDao,
     private val preferencesManager: PreferencesManager
-) : CopilotToolHandler {
+) : AnanauToolHandler {
 
     private val gson = Gson()
 
@@ -88,7 +88,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                     try {
                         val modules = canvasApiService.getModulesWithItems("Bearer $rawToken", cid)
                         val courseName = courses.find { it.id == cid }?.name ?: "Curso $cid"
-                        val source = CopilotSource(
+                        val source = AnanauSource(
                             title = "Módulos de $courseName",
                             detail = "${modules.size} módulos obtenidos de Canvas"
                         )
@@ -130,7 +130,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                         if (!explicitPageUrl.isNullOrBlank()) {
                             val pageDetail = canvasApiService.getPageDetails(token, cid, explicitPageUrl)
                             val cleanBody = pageDetail.body?.let { HtmlUtils.cleanHtml(it) } ?: "Sin contenido textual disponible"
-                            val source = CopilotSource(
+                            val source = AnanauSource(
                                 title = "${pageDetail.title ?: resourceNameQuery} ($courseName)",
                                 detail = "Página de Canvas LMS leída"
                             )
@@ -170,7 +170,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                                             ?: foundItem.title.lowercase().replace(" ", "-")
                                         val pageDetail = canvasApiService.getPageDetails(token, cid, pageSlug)
                                         val cleanBody = pageDetail.body?.let { HtmlUtils.cleanHtml(it) } ?: "Sin contenido de texto"
-                                        val source = CopilotSource(
+                                        val source = AnanauSource(
                                             title = "${pageDetail.title ?: foundItem.title} ($courseName)",
                                             detail = "Página de módulo '${foundModule?.name}'"
                                         )
@@ -191,7 +191,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                                         } catch (e: Exception) {
                                             null
                                         }
-                                        val source = CopilotSource(
+                                        val source = AnanauSource(
                                             title = "${foundItem.title} ($courseName)",
                                             detail = "Archivo subido por el profesor en módulo '${foundModule?.name}'"
                                         )
@@ -215,7 +215,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                                             null
                                         }
                                         val cleanDesc = assignDetail?.description?.let { HtmlUtils.cleanHtml(it) }
-                                        val source = CopilotSource(
+                                        val source = AnanauSource(
                                             title = "${foundItem.title} ($courseName)",
                                             detail = "Tarea en módulo '${foundModule?.name}'"
                                         )
@@ -239,7 +239,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                                             null
                                         }
                                         val cleanMessage = topicDetail?.message?.let { HtmlUtils.cleanHtml(it) } ?: "Sin mensaje"
-                                        val source = CopilotSource(
+                                        val source = AnanauSource(
                                             title = "Foro: ${foundItem.title} ($courseName)",
                                             detail = "Foro/Debate de Canvas en '${foundModule?.name}'"
                                         )
@@ -257,7 +257,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                                         ToolExecutionResult(json, source)
                                     }
                                     else -> {
-                                        val source = CopilotSource(
+                                        val source = AnanauSource(
                                             title = "${foundItem.title} ($courseName)",
                                             detail = "Recurso (${foundItem.type}) en módulo '${foundModule?.name}'"
                                         )
@@ -281,7 +281,7 @@ class CanvasModulesToolsHandler @Inject constructor(
                                 try {
                                     val pageDetail = canvasApiService.getPageDetails(token, cid, slug)
                                     val cleanBody = pageDetail.body?.let { HtmlUtils.cleanHtml(it) } ?: "Sin contenido"
-                                    val source = CopilotSource(
+                                    val source = AnanauSource(
                                         title = "${pageDetail.title ?: resourceNameQuery} ($courseName)",
                                         detail = "Página de Canvas LMS leída"
                                     )

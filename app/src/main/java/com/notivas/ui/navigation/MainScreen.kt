@@ -21,7 +21,7 @@ fun MainScreen(onLogout: () -> Unit) {
     val currentDestination = navBackStackEntry?.destination
 
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
-    val items = remember { listOf(Screen.Dashboard, Screen.Notas, Screen.Copilot, Screen.Profile) }
+    val items = remember { listOf(Screen.Dashboard, Screen.Notas, Screen.Ananau, Screen.Profile) }
 
     val isSimulador = currentDestination?.route == Screen.Simulador.route
     val density = LocalDensity.current

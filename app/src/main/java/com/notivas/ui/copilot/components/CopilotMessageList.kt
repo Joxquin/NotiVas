@@ -1,4 +1,4 @@
-package com.notivas.ui.copilot.components
+package com.notivas.ui.Ananau.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.notivas.ui.copilot.CopilotMessageItem
+import com.notivas.ui.Ananau.AnanauMessageItem
 
 private data class SuggestionItem(
     val icon: ImageVector,
@@ -31,8 +31,8 @@ private data class SuggestionItem(
 )
 
 @Composable
-fun CopilotMessageList(
-    messages: List<CopilotMessageItem>,
+fun AnanauMessageList(
+    messages: List<AnanauMessageItem>,
     isLoading: Boolean,
     listState: LazyListState,
     coursesCount: Int,
@@ -41,7 +41,7 @@ fun CopilotMessageList(
     modifier: Modifier = Modifier
 ) {
     if (messages.isEmpty()) {
-        CopilotEmptyState(
+        AnanauEmptyState(
             coursesCount = coursesCount,
             currentModel = currentModel,
             onSuggestionClick = onSuggestionClick,
@@ -57,12 +57,12 @@ fun CopilotMessageList(
             contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
         ) {
             items(messages, key = { it.id }) { message ->
-                CopilotMessageBubble(message = message)
+                AnanauMessageBubble(message = message)
             }
 
             if (isLoading) {
                 item(key = "loading_bubble") {
-                    CopilotLoadingBubble()
+                    AnanauLoadingBubble()
                 }
             }
         }
@@ -70,7 +70,7 @@ fun CopilotMessageList(
 }
 
 @Composable
-fun CopilotLoadingBubble(modifier: Modifier = Modifier) {
+fun AnanauLoadingBubble(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -129,7 +129,7 @@ fun CopilotLoadingBubble(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun CopilotEmptyState(
+fun AnanauEmptyState(
     coursesCount: Int,
     currentModel: String,
     onSuggestionClick: (String) -> Unit,
@@ -192,7 +192,7 @@ fun CopilotEmptyState(
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "NotiVas Copilot",
+                text = "NotiVas Ananau",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
