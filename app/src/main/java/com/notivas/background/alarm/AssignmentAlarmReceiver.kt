@@ -29,9 +29,12 @@ class AssignmentAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            // Reagendar todas las alarmas tras el reinicio del dispositivo
+            // Reagendar todas las alarmas y sincronización en segundo plano tras el reinicio del dispositivo
             CoroutineScope(Dispatchers.IO).launch {
                 alarmScheduler.rescheduleAllAlarms()
+                if (!preferencesManager.accessToken.first().isNullOrBlank()) {
+                    repository.scheduleReminders()
+                }
             }
             return
         }
