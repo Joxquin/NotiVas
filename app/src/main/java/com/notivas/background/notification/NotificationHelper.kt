@@ -25,6 +25,11 @@ class NotificationHelper @Inject constructor(
 
         const val CHANNEL_GENERAL_ID = "general_notifications"
         const val CHANNEL_GENERAL_NAME = "Avisos Generales"
+
+        const val CHANNEL_SYNC_ID = "sync_notifications"
+        const val CHANNEL_SYNC_NAME = "Sincronización en Segundo Plano"
+
+        const val SYNC_NOTIFICATION_ID = 88888
     }
 
     fun showNotification(
@@ -60,6 +65,29 @@ class NotificationHelper @Inject constructor(
         notificationManager.notify(99999, summaryNotification)
     }
 
+    fun showSyncNotification(
+        title: String = "Sincronizando Canvas",
+        message: String = "Actualizando cursos, tareas y pendientes..."
+    ) {
+        createChannels()
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_SYNC_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+            .setOngoing(true)
+            .setProgress(0, 0, true)
+            .build()
+
+        notificationManager.notify(SYNC_NOTIFICATION_ID, notification)
+    }
+
+    fun dismissSyncNotification() {
+        notificationManager.cancel(SYNC_NOTIFICATION_ID)
+    }
+
     private fun createChannels() {
         val reminderChannel = NotificationChannel(
             CHANNEL_REMINDERS_ID,
@@ -77,7 +105,18 @@ class NotificationHelper @Inject constructor(
             description = "Avisos y alertas generales de la aplicación"
         }
 
+        val syncChannel = NotificationChannel(
+            CHANNEL_SYNC_ID,
+            CHANNEL_SYNC_NAME,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Notificaciones silenciosas de progreso durante la sincronización"
+            setSound(null, null)
+            enableVibration(false)
+        }
+
         notificationManager.createNotificationChannel(reminderChannel)
         notificationManager.createNotificationChannel(generalChannel)
+        notificationManager.createNotificationChannel(syncChannel)
     }
 }

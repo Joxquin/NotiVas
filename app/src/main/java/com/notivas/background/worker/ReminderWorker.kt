@@ -28,10 +28,13 @@ class ReminderWorker @AssistedInject constructor(
         return try {
             val token = preferencesManager.accessToken.first()
             if (!token.isNullOrBlank()) {
+                notificationHelper.showSyncNotification()
                 try {
                     repository.fetchAndSaveData()
                 } catch (_: Exception) {
                     // Cache fallback
+                } finally {
+                    notificationHelper.dismissSyncNotification()
                 }
             }
 
